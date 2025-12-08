@@ -1,0 +1,111 @@
+{
+  "common": {
+    "loading": "ஏற்றுகிறது...",
+    "error": "பிழை",
+    "success": "வெற்றி",
+    "cancel": "ரத்துசெய்",
+    "save": "சேமி",
+    "delete": "நீக்கு",
+    "edit": "திருத்து",
+    "add": "சேர்",
+    "back": "பின்",
+    "next": "அடுத்து",
+    "submit": "சமர்ப்பி",
+    "search": "தேடு",
+    "filter": "வடிகட்டு",
+    "clear": "அழி"
+  },
+  "auth": {
+    "login": "உள்நுழை",
+    "register": "பதிவு செய்",
+    "logout": "வெளியேறு",
+    "email": "மின்னஞ்சல்",
+    "password": "கடவுச்சொல்",
+    "confirmPassword": "கடவுச்சொல்லை உறுதிப்படுத்து",
+    "name": "பெயர்",
+    "phone": "தொலைபேசி",
+    "forgotPassword": "கடவுச்சொல் மறந்துவிட்டதா?",
+    "dontHaveAccount": "கணக்கு இல்லையா? பதிவு செய்யுங்கள்",
+    "alreadyHaveAccount": "ஏற்கனவே கணக்கு உள்ளதா? உள்நுழையுங்கள்",
+    "loginFailed": "உள்நுழைவு தோல்வி",
+    "registrationFailed": "பதிவு தோல்வி",
+    "invalidCredentials": "தவறான மின்னஞ்சல் அல்லது கடவுச்சொல்",
+    "passwordTooShort": "கடவுச்சொல் குறைந்தது 6 எழுத்துக்கள் இருக்க வேண்டும்",
+    "passwordsDoNotMatch": "கடவுச்சொற்கள் பொருந்தவில்லை",
+    "fillAllFields": "தயவுசெய்து அனைத்து புலங்களையும் நிரப்பவும்"
+  },
+  "navigation": {
+    "home": "வீடு",
+    "products": "தயாரிப்புகள்",
+    "cart": "கார்ட்",
+    "orders": "ஆர்டர்கள்",
+    "profile": "சுயவிவரம்",
+    "settings": "அமைப்புகள்",
+    "dashboard": "டாஷ்போர்டு",
+    "pickupPoints": "பிக்அப் புள்ளிகள்"
+  },
+  "products": {
+    "title": "தயாரிப்புகள்",
+    "noProducts": "தயாரிப்புகள் இல்லை",
+    "addToCart": "கார்ட்டில் சேர்",
+    "outOfStock": "பங்கு இல்லை",
+    "inStock": "பங்கு உள்ளது",
+    "price": "விலை",
+    "category": "வகை",
+    "fresh": "புதிய",
+    "frozen": "உறைந்த",
+    "description": "விளக்கம்",
+    "quantity": "அளவு"
+  },
+  "cart": {
+    "title": "வாங்கும் கார்ட்",
+    "empty": "உங்கள் கார்ட் காலியாக உள்ளது",
+    "total": "மொத்தம்",
+    "checkout": "செக்கவுட்",
+    "remove": "நீக்கு",
+    "update": "புதுப்பி",
+    "items": "பொருட்கள்"
+  },
+  "orders": {
+    "title": "எனது ஆர்டர்கள்",
+    "noOrders": "இன்னும் ஆர்டர்கள் இல்லை",
+    "orderId": "ஆர்டர் ஐடி",
+    "orderDate": "ஆர்டர் தேதி",
+    "status": "நிலை",
+    "total": "மொத்தம்",
+    "viewDetails": "விவரங்களைக் காண்க",
+    "pending": "நிலுவையில்",
+    "confirmed": "உறுதிப்படுத்தப்பட்டது",
+    "outForDelivery": "விநியோகத்திற்கு வெளியே",
+    "delivered": "வழங்கப்பட்டது",
+    "cancelled": "ரத்துசெய்யப்பட்டது"
+  },
+  "profile": {
+    "title": "சுயவிவரம்",
+    "email": "மின்னஞ்சல்",
+    "name": "பெயர்",
+    "phone": "தொலைபேசி",
+    "role": "பங்கு",
+    "countryPreference": "நாட்டு விருப்பம்",
+    "germany": "ஜெர்மனி",
+    "norway": "நோர்வே",
+    "customer": "வாடிக்கையாளர்",
+    "admin": "நிர்வாகி"
+  },
+  "settings": {
+    "title": "அமைப்புகள்",
+    "language": "மொழி",
+    "english": "ஆங்கிலம்",
+    "tamil": "தமிழ்",
+    "notifications": "அறிவிப்புகள்",
+    "about": "பற்றி",
+    "version": "பதிப்பு"
+  },
+  "errors": {
+    "somethingWentWrong": "ஏதோ தவறு நடந்தது",
+    "tryAgain": "மீண்டும் முயற்சிக்கவும்",
+    "networkError": "நெட்வொர்க் பிழை. உங்கள் இணைப்பைச் சரிபார்க்கவும்.",
+    "serverError": "சர்வர் பிழை. பிறகு முயற்சிக்கவும்."
+  }
+}
+

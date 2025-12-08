@@ -1,0 +1,297 @@
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { RootStackParamList, PickupPoint } from '../../types';
+import { pickupPointService } from '../../services';
+import { AppHeader, Button, EmptyState, LoadingScreen, ErrorMessage } from '../../components';
+import { formatPrice } from '../../utils/productUtils';
+import { COUNTRIES } from '../../constants';
+import type { Country } from '../../constants';
+
+type AdminPickupPointsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AdminPickupPoints'>;
+
+const AdminPickupPointsScreen = () => {
+  const navigation = useNavigation<AdminPickupPointsScreenNavigationProp>();
+  const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const country = (user?.country_preference || COUNTRIES.GERMANY) as Country;
+
+  // Fetch all pickup points
+  const { data: pickupPoints = [], isLoading, error, refetch } = useQuery({
+    queryKey: ['pickupPoints', 'all'],
+    queryFn: () => pickupPointService.getPickupPoints(),
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: (pickupPointId: string) => pickupPointService.deletePickupPoint(pickupPointId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pickupPoints'] });
+      Alert.alert('Success', 'Pickup point deleted successfully');
+    },
+    onError: (error: any) => {
+      Alert.alert('Error', error.message || 'Failed to delete pickup point');
+    },
+  });
+
+  // Toggle active status
+  const toggleActiveMutation = useMutation({
+    mutationFn: ({ pickupPointId, active }: { pickupPointId: string; active: boolean }) =>
+      pickupPointService.updatePickupPoint(pickupPointId, { active }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pickupPoints'] });
+    },
+    onError: (error: any) => {
+      Alert.alert('Error', error.message || 'Failed to update pickup point');
+    },
+  });
+
+  const handleAddPickupPoint = () => {
+    navigation.navigate('AddPickupPoint' as never);
+  };
+
+  const handleEditPickupPoint = (pickupPointId: string) => {
+    navigation.navigate('EditPickupPoint' as never, { pickupPointId } as never);
+  };
+
+  const handleDeletePickupPoint = (point: PickupPoint) => {
+    Alert.alert(
+      'Delete Pickup Point',
+      `Are you sure you want to delete "${point.name}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => deleteMutation.mutate(point.id),
+        },
+      ]
+    );
+  };
+
+  const handleToggleActive = (point: PickupPoint) => {
+    toggleActiveMutation.mutate({
+      pickupPointId: point.id,
+      active: !point.active,
+    });
+  };
+
+  if (isLoading) {
+    return <LoadingScreen message="Loading pickup points..." />;
+  }
+
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <AppHeader title="Manage Pickup Points" />
+        <ErrorMessage
+          message="Failed to load pickup points. Please try again."
+          onRetry={() => refetch()}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <AppHeader
+        title="Manage Pickup Points"
+        rightAction={{
+          icon: 'plus',
+          onPress: handleAddPickupPoint,
+        }}
+      />
+
+      {pickupPoints.length === 0 ? (
+        <EmptyState
+          icon="map-marker-off"
+          title="No pickup points"
+          message="Add your first pickup point"
+        />
+      ) : (
+        <FlatList
+          data={pickupPoints}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.pickupPointCard}>
+              <View style={styles.pickupPointHeader}>
+                <View style={styles.pickupPointInfo}>
+                  <Text style={styles.pickupPointName}>{item.name}</Text>
+                  <Text style={styles.pickupPointAddress}>{item.address}</Text>
+                  <View style={styles.pickupPointMeta}>
+                    <Text style={styles.pickupPointCountry}>
+                      {item.country.charAt(0).toUpperCase() + item.country.slice(1)}
+                    </Text>
+                    <Text style={styles.pickupPointFee}>
+                      Fee: {formatPrice(item.delivery_fee, item.country as Country)}
+                    </Text>
+                  </View>
+                  {!item.active && (
+                    <Text style={styles.inactiveLabel}>Inactive</Text>
+                  )}
+                </View>
+              </View>
+              <View style={styles.actions}>
+                <TouchableOpacity
+                  style={[styles.actionButton, !item.active && styles.activeButton]}
+                  onPress={() => handleToggleActive(item)}
+                >
+                  <Icon
+                    name={item.active ? 'eye-off' : 'eye'}
+                    size={20}
+                    color={item.active ? '#666' : '#34C759'}
+                  />
+                  <Text style={[styles.actionText, !item.active && styles.activeText]}>
+                    {item.active ? 'Deactivate' : 'Activate'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.editButton]}
+                  onPress={() => handleEditPickupPoint(item.id)}
+                >
+                  <Icon name="pencil" size={20} color="#007AFF" />
+                  <Text style={[styles.actionText, styles.editText]}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.deleteButton]}
+                  onPress={() => handleDeletePickupPoint(item)}
+                >
+                  <Icon name="delete" size={20} color="#FF3B30" />
+                  <Text style={[styles.actionText, styles.deleteText]}>Delete</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+          contentContainerStyle={styles.listContent}
+        />
+      )}
+
+      <View style={styles.footer}>
+        <Button
+          title="Add New Pickup Point"
+          onPress={handleAddPickupPoint}
+          fullWidth
+          style={styles.addButton}
+        />
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  listContent: {
+    padding: 16,
+  },
+  pickupPointCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  pickupPointHeader: {
+    marginBottom: 12,
+  },
+  pickupPointInfo: {
+    flex: 1,
+  },
+  pickupPointName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000',
+    marginBottom: 4,
+  },
+  pickupPointAddress: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+  },
+  pickupPointMeta: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 4,
+  },
+  pickupPointCountry: {
+    fontSize: 12,
+    color: '#666',
+    textTransform: 'capitalize',
+  },
+  pickupPointFee: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  inactiveLabel: {
+    fontSize: 12,
+    color: '#FF3B30',
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  actions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#fff',
+    gap: 4,
+  },
+  activeButton: {
+    borderColor: '#34C759',
+    backgroundColor: '#e6f9ed',
+  },
+  editButton: {
+    borderColor: '#007AFF',
+    backgroundColor: '#f0f7ff',
+  },
+  deleteButton: {
+    borderColor: '#FF3B30',
+    backgroundColor: '#ffe6e6',
+  },
+  actionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+  },
+  activeText: {
+    color: '#34C759',
+  },
+  editText: {
+    color: '#007AFF',
+  },
+  deleteText: {
+    color: '#FF3B30',
+  },
+  footer: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  addButton: {
+    marginTop: 0,
+  },
+});
+
+export default AdminPickupPointsScreen;
