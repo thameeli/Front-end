@@ -1,12 +1,18 @@
+/**
+ * Enhanced App Navigator with Smooth Transitions and Custom Tab Bar
+ * Modern navigation with blur effects and animated indicators
+ */
+
 import React, { useEffect, useRef } from 'react';
-import { View } from 'react-native';
+import { View, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createStackNavigator, TransitionPresets } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useAuthStore } from '../store/authStore';
 import { RootStackParamList } from '../types';
-import { LoadingScreen, CartBadge } from '../components';
+import { LoadingScreen, CartBadge, CustomTabBar } from '../components';
+import { colors } from '../theme';
 
 // Screens
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -36,41 +42,23 @@ import EditPickupPointScreen from '../screens/admin/EditPickupPointScreen';
 const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
 
-// Common tab bar styling
-const commonTabBarOptions = {
-  tabBarActiveTintColor: '#007AFF',
-  tabBarInactiveTintColor: '#999',
-  tabBarStyle: {
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    paddingTop: 8,
-    paddingBottom: 8,
-    height: 65,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  tabBarLabelStyle: {
-    fontSize: 12,
-    fontWeight: '500' as const,
-    marginTop: 4,
-  },
-  headerShown: true,
-  headerStyle: {
-    backgroundColor: '#fff',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  headerTintColor: '#000',
-  headerTitleStyle: {
-    fontWeight: 'bold' as const,
-    fontSize: 18,
+// Smooth transition configuration
+const screenOptions = {
+  headerShown: false,
+  ...TransitionPresets.SlideFromRightIOS,
+  transitionSpec: {
+    open: {
+      animation: 'timing' as const,
+      config: {
+        duration: 300,
+      },
+    },
+    close: {
+      animation: 'timing' as const,
+      config: {
+        duration: 250,
+      },
+    },
   },
 };
 
@@ -78,45 +66,50 @@ const commonTabBarOptions = {
 const GuestTabs = () => {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        ...commonTabBarOptions,
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName: any;
-
-          if (route.name === 'Home') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Products') {
-            iconName = focused ? 'store' : 'store-outline';
-          } else if (route.name === 'Cart') {
-            iconName = focused ? 'cart' : 'cart-outline';
-          } else {
-            iconName = 'help-circle';
-          }
-
-          return <Icon name={iconName} size={24} color={color} />;
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{
+        headerShown: true,
+        headerStyle: {
+          backgroundColor: '#fff',
+          elevation: 2,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
         },
-      })}
+        headerTintColor: '#000',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+          fontSize: 18,
+        },
+      }}
     >
-      <Tab.Screen 
-        name="Home" 
+      <Tab.Screen
+        name="Home"
         component={HomeScreen}
-        options={{ 
+        options={{
           title: 'Home',
           tabBarLabel: 'Home',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Icon name={focused ? 'home' : 'home-outline'} size={24} color={color} />
+          ),
         }}
       />
-      <Tab.Screen 
-        name="Products" 
+      <Tab.Screen
+        name="Products"
         component={ProductsScreen}
-        options={{ 
+        options={{
           title: 'Products',
           tabBarLabel: 'Products',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Icon name={focused ? 'store' : 'store-outline'} size={24} color={color} />
+          ),
         }}
       />
-      <Tab.Screen 
-        name="Cart" 
+      <Tab.Screen
+        name="Cart"
         component={CartScreen}
-        options={{ 
+        options={{
           title: 'Cart',
           tabBarLabel: 'Cart',
           tabBarIcon: ({ focused, color, size }) => {
@@ -138,49 +131,50 @@ const GuestTabs = () => {
 const CustomerTabs = () => {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        ...commonTabBarOptions,
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName: any;
-
-          if (route.name === 'Home') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Products') {
-            iconName = focused ? 'store' : 'store-outline';
-          } else if (route.name === 'Cart') {
-            iconName = focused ? 'cart' : 'cart-outline';
-          } else if (route.name === 'Orders') {
-            iconName = focused ? 'package-variant' : 'package-variant-closed';
-          } else if (route.name === 'Profile') {
-            iconName = focused ? 'account' : 'account-outline';
-          } else {
-            iconName = 'help-circle';
-          }
-
-          return <Icon name={iconName} size={24} color={color} />;
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{
+        headerShown: true,
+        headerStyle: {
+          backgroundColor: '#fff',
+          elevation: 2,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
         },
-      })}
+        headerTintColor: '#000',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+          fontSize: 18,
+        },
+      }}
     >
-      <Tab.Screen 
-        name="Home" 
+      <Tab.Screen
+        name="Home"
         component={HomeScreen}
-        options={{ 
+        options={{
           title: 'Home',
           tabBarLabel: 'Home',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Icon name={focused ? 'home' : 'home-outline'} size={24} color={color} />
+          ),
         }}
       />
-      <Tab.Screen 
-        name="Products" 
+      <Tab.Screen
+        name="Products"
         component={ProductsScreen}
-        options={{ 
+        options={{
           title: 'Products',
           tabBarLabel: 'Products',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Icon name={focused ? 'store' : 'store-outline'} size={24} color={color} />
+          ),
         }}
       />
-      <Tab.Screen 
-        name="Cart" 
+      <Tab.Screen
+        name="Cart"
         component={CartScreen}
-        options={{ 
+        options={{
           title: 'Cart',
           tabBarLabel: 'Cart',
           tabBarIcon: ({ focused, color, size }) => {
@@ -194,20 +188,30 @@ const CustomerTabs = () => {
           },
         }}
       />
-      <Tab.Screen 
-        name="Orders" 
+      <Tab.Screen
+        name="Orders"
         component={OrdersScreen}
-        options={{ 
+        options={{
           title: 'Orders',
           tabBarLabel: 'Orders',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Icon
+              name={focused ? 'package-variant' : 'package-variant-closed'}
+              size={24}
+              color={color}
+            />
+          ),
         }}
       />
-      <Tab.Screen 
-        name="Profile" 
+      <Tab.Screen
+        name="Profile"
         component={ProfileScreen}
-        options={{ 
+        options={{
           title: 'Profile',
           tabBarLabel: 'Profile',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Icon name={focused ? 'account' : 'account-outline'} size={24} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>
@@ -218,67 +222,89 @@ const CustomerTabs = () => {
 const AdminTabs = () => {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        ...commonTabBarOptions,
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName: any;
-
-          if (route.name === 'Dashboard') {
-            iconName = focused ? 'view-dashboard' : 'view-dashboard-outline';
-          } else if (route.name === 'Products') {
-            iconName = focused ? 'store' : 'store-outline';
-          } else if (route.name === 'Orders') {
-            iconName = focused ? 'package-variant' : 'package-variant-closed';
-          } else if (route.name === 'PickupPoints') {
-            iconName = focused ? 'map-marker' : 'map-marker-outline';
-          } else if (route.name === 'Profile') {
-            iconName = focused ? 'account' : 'account-outline';
-          } else {
-            iconName = 'help-circle';
-          }
-
-          return <Icon name={iconName} size={24} color={color} />;
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{
+        headerShown: true,
+        headerStyle: {
+          backgroundColor: '#fff',
+          elevation: 2,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
         },
-      })}
+        headerTintColor: '#000',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+          fontSize: 18,
+        },
+      }}
     >
-      <Tab.Screen 
-        name="Dashboard" 
+      <Tab.Screen
+        name="Dashboard"
         component={AdminDashboardScreen}
-        options={{ 
+        options={{
           title: 'Dashboard',
           tabBarLabel: 'Dashboard',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Icon
+              name={focused ? 'view-dashboard' : 'view-dashboard-outline'}
+              size={24}
+              color={color}
+            />
+          ),
         }}
       />
-      <Tab.Screen 
-        name="Products" 
+      <Tab.Screen
+        name="Products"
         component={AdminProductsScreen}
-        options={{ 
+        options={{
           title: 'Products',
           tabBarLabel: 'Products',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Icon name={focused ? 'store' : 'store-outline'} size={24} color={color} />
+          ),
         }}
       />
-      <Tab.Screen 
-        name="Orders" 
+      <Tab.Screen
+        name="Orders"
         component={AdminOrdersScreen}
-        options={{ 
+        options={{
           title: 'Orders',
           tabBarLabel: 'Orders',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Icon
+              name={focused ? 'package-variant' : 'package-variant-closed'}
+              size={24}
+              color={color}
+            />
+          ),
         }}
       />
-      <Tab.Screen 
-        name="PickupPoints" 
+      <Tab.Screen
+        name="PickupPoints"
         component={AdminPickupPointsScreen}
-        options={{ 
+        options={{
           title: 'Pickup Points',
           tabBarLabel: 'Pickup Points',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Icon
+              name={focused ? 'map-marker' : 'map-marker-outline'}
+              size={24}
+              color={color}
+            />
+          ),
         }}
       />
-      <Tab.Screen 
-        name="Profile" 
+      <Tab.Screen
+        name="Profile"
         component={ProfileScreen}
-        options={{ 
+        options={{
           title: 'Profile',
           tabBarLabel: 'Profile',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Icon name={focused ? 'account' : 'account-outline'} size={24} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>
@@ -297,30 +323,28 @@ const AppNavigator = () => {
   // Navigate when authentication state changes
   useEffect(() => {
     if (!isLoading && navigationRef.current) {
-      // Use a longer delay to ensure Stack.Navigator has re-rendered with new isAuthenticated value
       const timer = setTimeout(() => {
         if (navigationRef.current) {
           try {
-            if (isAuthenticated && user) {
-              // Reset navigation stack to Main screen (CustomerTabs or AdminTabs)
-              // The Stack.Navigator should have already re-rendered to show CustomerTabs/AdminTabs
-              navigationRef.current.reset({
-                index: 0,
-                routes: [{ name: 'Main' }],
-              });
-            } else if (!isAuthenticated) {
-              // Reset to Main screen (GuestTabs)
-              navigationRef.current.reset({
-                index: 0,
-                routes: [{ name: 'Main' }],
-              });
-            }
+            navigationRef.current.reset({
+              index: 0,
+              routes: [{ name: 'Main' }],
+            });
+            console.log('🔄 Navigation reset:', {
+              isAuthenticated,
+              role: user?.role,
+              navigatorKey: isAuthenticated
+                ? user?.role === 'admin'
+                  ? 'admin'
+                  : 'customer'
+                : 'guest',
+            });
           } catch (error) {
-            console.error('Navigation reset error:', error);
+            console.error('❌ Navigation reset error:', error);
           }
         }
-      }, 500);
-      
+      }, 100);
+
       return () => clearTimeout(timer);
     }
   }, [isAuthenticated, user, isLoading]);
@@ -329,9 +353,16 @@ const AppNavigator = () => {
     return <LoadingScreen message="Loading..." />;
   }
 
+  // Use a key to force re-render when auth state changes
+  const navigatorKey = isAuthenticated
+    ? user?.role === 'admin'
+      ? 'admin'
+      : 'customer'
+    : 'guest';
+
   return (
     <NavigationContainer ref={navigationRef}>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator key={navigatorKey} screenOptions={screenOptions}>
         {!isAuthenticated ? (
           <>
             <Stack.Screen name="Main" component={GuestTabs} />

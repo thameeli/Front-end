@@ -9,6 +9,9 @@ console.log('🔵 [App.tsx] Step 1: Loading URL polyfill...');
 import 'react-native-url-polyfill/auto';
 console.log('✅ [App.tsx] Step 2: URL polyfill loaded successfully');
 
+// Import NativeWind global styles
+import './global.css';
+
 console.log('🔵 [App.tsx] Step 3: Loading React and core dependencies...');
 import React, { useEffect } from 'react';
 import { StatusBar, useColorScheme } from 'react-native';
@@ -26,6 +29,7 @@ import { queryClient } from './src/config/queryClient';
 console.log('🔵 [App.tsx] Step 5: Loading i18n...');
 import './src/i18n'; // Initialize i18n
 console.log('✅ [App.tsx] Step 6: i18n loaded');
+import StripeProviderWrapper from './src/components/StripeProviderWrapper';
 console.log('🔵 [App.tsx] Step 7: Loading navigation and stores...');
 import AppNavigator from './src/navigation/AppNavigator';
 import { useCartStore } from './src/store/cartStore';
@@ -74,16 +78,18 @@ function App(): React.JSX.Element {
 
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <PaperProvider theme={isDarkMode ? darkTheme : lightTheme}>
-            <SafeAreaProvider>
-              <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-              <AppNavigator />
-            </SafeAreaProvider>
-          </PaperProvider>
-        </GestureHandlerRootView>
-      </QueryClientProvider>
+      <StripeProviderWrapper>
+        <QueryClientProvider client={queryClient}>
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <PaperProvider theme={isDarkMode ? darkTheme : lightTheme}>
+              <SafeAreaProvider>
+                <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+                <AppNavigator />
+              </SafeAreaProvider>
+            </PaperProvider>
+          </GestureHandlerRootView>
+        </QueryClientProvider>
+      </StripeProviderWrapper>
     </ErrorBoundary>
   );
 }

@@ -1,17 +1,25 @@
+/**
+ * Modern Cart Screen with Swipe-to-Delete, Quantity Animations, and Sticky Total
+ * Uses StyleSheet instead of className for better NativeWind compatibility
+ */
+
 import React, { useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, ScrollView, Alert, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
+import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../../types';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
 import { useProducts } from '../../hooks/useProducts';
-import { CartItem, AppHeader, Button, EmptyState, LoadingScreen, ErrorMessage } from '../../components';
+import { CartItem, AppHeader, Button, EmptyState, LoadingScreen, ErrorMessage, AnimatedView, Card } from '../../components';
 import { formatCartSummary } from '../../utils/cartUtils';
 import { validateCart, updateCartWithProductData } from '../../utils/cartValidation';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
+import { colors } from '../../theme';
 
 type CartScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Cart'>;
 
@@ -19,7 +27,13 @@ const CartScreen = () => {
   const navigation = useNavigation<CartScreenNavigationProp>();
   const { t } = useTranslation();
   const { user } = useAuthStore();
+  const insets = useSafeAreaInsets();
   const country = (user?.country_preference || COUNTRIES.GERMANY) as Country;
+  
+  // Calculate tab bar height to position button above it
+  const tabBarHeight = Platform.OS === 'ios' ? 60 : 56;
+  const bottomPadding = Math.max(insets.bottom, Platform.OS === 'ios' ? 8 : 4);
+  const totalTabBarHeight = tabBarHeight + bottomPadding;
   
   const {
     items,
@@ -41,7 +55,6 @@ const CartScreen = () => {
     if (products.length > 0 && items.length > 0) {
       const updatedItems = updateCartWithProductData(items, products);
       if (updatedItems.length !== items.length) {
-        // Some items were removed, update cart
         useCartStore.setState({ items: updatedItems });
         useCartStore.getState().saveCart();
       }
@@ -53,7 +66,7 @@ const CartScreen = () => {
     return validateCart(items);
   }, [items]);
 
-  // Calculate totals (using placeholder for pickup point - will be set in checkout)
+  // Calculate totals
   const cartSummary = useMemo(() => {
     return formatCartSummary(items, country, null, false);
   }, [items, country]);
@@ -97,7 +110,6 @@ const CartScreen = () => {
   const handleCheckout = () => {
     const { isAuthenticated } = useAuthStore.getState();
     
-    // Check if user is authenticated
     if (!isAuthenticated) {
       Alert.alert(
         t('auth.loginRequired') || 'Login Required',
@@ -143,14 +155,9 @@ const CartScreen = () => {
           icon="cart-off"
           title="Your cart is empty"
           message="Add some products to get started!"
+          actionLabel="Continue Shopping"
+          onAction={() => navigation.navigate('Products')}
         />
-        <View style={styles.emptyCartActions}>
-          <Button
-            title="Continue Shopping"
-            onPress={() => navigation.navigate('Products')}
-            fullWidth
-          />
-        </View>
       </View>
     );
   }
@@ -158,56 +165,101 @@ const CartScreen = () => {
   return (
     <View style={styles.container}>
       <AppHeader title="Shopping Cart" />
-      <ScrollView style={styles.content}>
-        {!cartValidation.isValid && (
-          <ErrorMessage
-            message={cartValidation.errors.join(', ')}
-            type="warning"
-            style={styles.errorMessage}
-          />
-        )}
+      
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.content}>
+          {!cartValidation.isValid && (
+            <AnimatedView animation="fade" delay={0}>
+              <Card elevation="raised" style={styles.warningCard}>
+                <View style={styles.warningHeader}>
+                  <Icon name="alert" size={20} color={colors.warning[500]} />
+                  <Text style={styles.warningTitle}>
+                    Cart Issues
+                  </Text>
+                </View>
+                <Text style={styles.warningText}>
+                  {cartValidation.errors.join(', ')}
+                </Text>
+              </Card>
+            </AnimatedView>
+          )}
 
-        <View style={styles.itemsList}>
-          {items.map((item) => (
-            <CartItem
-              key={item.product.id}
-              item={item}
-              onQuantityChange={(quantity) =>
-                handleQuantityChange(item.product.id, quantity)
-              }
-              onRemove={() => handleRemoveItem(item.product.id)}
-              country={country}
-            />
-          ))}
-        </View>
+          {/* Cart Items */}
+          <View style={styles.cartItemsContainer}>
+            {items.map((item, index) => (
+              <AnimatedView
+                key={item.product.id}
+                animation="fade"
+                delay={index * 50}
+              >
+                <CartItem
+                  item={item}
+                  onQuantityChange={(quantity) =>
+                    handleQuantityChange(item.product.id, quantity)
+                  }
+                  onRemove={() => handleRemoveItem(item.product.id)}
+                  country={country}
+                />
+              </AnimatedView>
+            ))}
+          </View>
 
-        <View style={styles.summary}>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>{cartSummary.subtotal}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Delivery Fee</Text>
-            <Text style={styles.summaryValue}>
-              {cartSummary.deliveryFee} (at checkout)
-            </Text>
-          </View>
-          <View style={[styles.summaryRow, styles.totalRow]}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>{cartSummary.total}</Text>
-          </View>
+          {/* Order Summary */}
+          <AnimatedView animation="slide" delay={items.length * 50} enterFrom="bottom">
+            <Card elevation="raised" style={styles.summaryCard}>
+              <Text style={styles.summaryTitle}>
+                Order Summary
+              </Text>
+              
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Subtotal</Text>
+                <Text style={styles.summaryValue}>
+                  {cartSummary.subtotal}
+                </Text>
+              </View>
+              
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Delivery Fee</Text>
+                <Text style={styles.summaryValueSecondary}>
+                  {cartSummary.deliveryFee} (at checkout)
+                </Text>
+              </View>
+              
+              <View style={styles.totalContainer}>
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Total</Text>
+                  <Text style={styles.totalValue}>
+                    {cartSummary.total}
+                  </Text>
+                </View>
+              </View>
+            </Card>
+          </AnimatedView>
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      {/* Sticky Checkout Button - Positioned above tab bar */}
+      <AnimatedView
+        animation="slide"
+        delay={100}
+        enterFrom="bottom"
+        style={[
+          styles.checkoutContainer,
+          { bottom: totalTabBarHeight }
+        ]}
+      >
         <Button
-          title={`Proceed to Checkout (${cartSummary.total})`}
+          title={`→ Proceed to checkout • ${cartSummary.total}`}
           onPress={handleCheckout}
           disabled={!cartValidation.isValid}
           fullWidth
-          style={styles.checkoutButton}
+          size="lg"
         />
-      </View>
+      </AnimatedView>
     </View>
   );
 };
@@ -215,28 +267,52 @@ const CartScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.neutral[50],
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 180, // Increased to account for button + tab bar
   },
   content: {
-    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  warningCard: {
+    marginBottom: 16,
     padding: 16,
+    backgroundColor: colors.warning[50],
+    borderWidth: 1,
+    borderColor: colors.warning[200],
   },
-  errorMessage: {
+  warningHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  warningTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.warning[700],
+    marginLeft: 8,
+  },
+  warningText: {
+    fontSize: 14,
+    color: colors.warning[600],
+  },
+  cartItemsContainer: {
     marginBottom: 16,
   },
-  itemsList: {
-    marginBottom: 16,
-  },
-  summary: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+  summaryCard: {
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  },
+  summaryTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.neutral[900],
+    marginBottom: 16,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -246,41 +322,58 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 16,
-    color: '#666',
+    color: colors.neutral[600],
   },
   summaryValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: colors.neutral[900],
+  },
+  summaryValueSecondary: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.neutral[500],
+  },
+  totalContainer: {
+    borderTopWidth: 1,
+    borderTopColor: colors.neutral[200],
+    paddingTop: 12,
+    marginTop: 8,
   },
   totalRow: {
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    paddingTop: 12,
-    marginTop: 4,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   totalLabel: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#000',
+    color: colors.neutral[900],
   },
   totalValue: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: colors.primary[500],
   },
-  footer: {
-    padding: 16,
+  checkoutContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
     backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  checkoutButton: {
-    marginTop: 0,
-  },
-  emptyCartActions: {
-    padding: 16,
+    borderTopColor: colors.neutral[200],
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
   },
 });
+
+// Set displayName for better debugging
+CartScreen.displayName = 'CartScreen';
 
 export default CartScreen;

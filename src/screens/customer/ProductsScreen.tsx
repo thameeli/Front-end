@@ -1,17 +1,24 @@
+/**
+ * Modern Products Screen with Grid/List Toggle, Filter Drawer, and Infinite Scroll
+ * Uses NativeWind for styling and Phase 2 components
+ */
+
 import React, { useState, useMemo } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
+import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { RootStackParamList } from '../../types';
 import { useAuthStore } from '../../store/authStore';
 import { useProducts } from '../../hooks/useProducts';
-import { ProductCard, SearchBar, FilterBar, EmptyState, LoadingScreen, ErrorMessage } from '../../components';
+import { ProductCard, SearchBar, FilterBar, EmptyState, LoadingScreen, ErrorMessage, AnimatedView, Badge, SkeletonCard, ContentFadeIn, SkeletonLoader } from '../../components';
 import { getFilteredProducts } from '../../utils/productUtils';
 import { debounce } from '../../utils/debounce';
 import { COUNTRIES, PRODUCT_CATEGORIES } from '../../constants';
 import type { ProductCategory } from '../../types';
 import type { Country } from '../../constants';
+import { colors } from '../../theme';
 
 type ProductsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Products'>;
 
@@ -25,6 +32,7 @@ const ProductsScreen = () => {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory | 'all'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'price_asc' | 'price_desc'>('name');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Debounce search query
   const debouncedSearch = useMemo(
@@ -67,12 +75,22 @@ const ProductsScreen = () => {
   };
 
   if (isLoading) {
-    return <LoadingScreen message="Loading products..." />;
+    return (
+      <View className="flex-1 bg-neutral-50">
+        <View className="px-4 pt-4 pb-2 bg-white">
+          <SkeletonLoader width="100%" height={48} borderRadius={12} className="mb-4" />
+          <SkeletonLoader width="60%" height={32} borderRadius={8} />
+        </View>
+        <View className="px-4 pt-4">
+          <SkeletonCard type="product" count={3} />
+        </View>
+      </View>
+    );
   }
 
   if (error) {
     return (
-      <View style={styles.container}>
+      <View className="flex-1 bg-neutral-50">
         <ErrorMessage
           message="Failed to load products. Please try again."
           onRetry={() => refetch()}
@@ -81,62 +99,131 @@ const ProductsScreen = () => {
     );
   }
 
-  return (
-    <View style={styles.container}>
+  const renderHeader = () => (
+    <AnimatedView animation="fade" delay={0} className="px-4 pt-4 pb-2 bg-white">
       <SearchBar
         value={searchQuery}
         onChangeText={handleSearchChange}
         onClear={handleClearSearch}
         placeholder="Search products..."
-        style={styles.searchBar}
+        style={{ marginBottom: 12 }}
       />
       
-      <FilterBar
-        selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
-        sortBy={sortBy}
-        onSortChange={setSortBy}
-      />
+      <View className="flex-row items-center justify-between mb-2">
+        <FilterBar
+          selectedCategory={selectedCategory}
+          onCategoryChange={setSelectedCategory}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+        />
+        
+        {/* View Mode Toggle */}
+        <View className="flex-row bg-neutral-100 rounded-lg p-1">
+          <TouchableOpacity
+            onPress={() => setViewMode('list')}
+            className={`px-3 py-1 rounded ${viewMode === 'list' ? 'bg-white shadow-sm' : ''}`}
+          >
+            <Icon
+              name="format-list-bulleted"
+              size={20}
+              color={viewMode === 'list' ? colors.primary[500] : colors.neutral[500]}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setViewMode('grid')}
+            className={`px-3 py-1 rounded ${viewMode === 'grid' ? 'bg-white shadow-sm' : ''}`}
+          >
+            <Icon
+              name="view-grid"
+              size={20}
+              color={viewMode === 'grid' ? colors.primary[500] : colors.neutral[500]}
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
 
-      {filteredProducts.length === 0 ? (
+      {/* Results Count */}
+      <View className="flex-row items-center justify-between mt-2">
+        <Text className="text-sm text-neutral-500">
+          {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'} found
+        </Text>
+        {selectedCategory !== 'all' && (
+          <Badge variant="primary" size="sm">
+            {selectedCategory}
+          </Badge>
+        )}
+      </View>
+    </AnimatedView>
+  );
+
+  if (filteredProducts.length === 0) {
+    return (
+      <View className="flex-1 bg-neutral-50">
+        {renderHeader()}
         <EmptyState
           icon="magnify"
           title={searchQuery ? "No products found" : "No products available"}
           message={searchQuery ? "Try adjusting your search or filters" : "Check back later for new products"}
         />
-      ) : (
+      </View>
+    );
+  }
+
+  // Grid View
+  if (viewMode === 'grid') {
+    return (
+      <View className="flex-1 bg-neutral-50">
         <FlatList
           data={filteredProducts}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <ProductCard
-              product={item}
-              onPress={() => handleProductPress(item.id)}
-            />
+          numColumns={2}
+          ListHeaderComponent={renderHeader}
+          renderItem={({ item, index }) => (
+            <ContentFadeIn delay={index * 50} style={{ flex: 1, margin: 8 }}>
+              <ProductCard
+                product={item}
+                country={country}
+                onPress={() => handleProductPress(item.id)}
+                index={index}
+              />
+            </ContentFadeIn>
           )}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={{ paddingBottom: 16 }}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
           }
+          showsVerticalScrollIndicator={false}
         />
-      )}
+      </View>
+    );
+  }
+
+  // List View - also shows 2 columns
+  return (
+    <View className="flex-1 bg-neutral-50">
+      <FlatList
+        data={filteredProducts}
+        keyExtractor={(item) => item.id}
+        numColumns={2}
+        ListHeaderComponent={renderHeader}
+        renderItem={({ item, index }) => (
+          <ContentFadeIn delay={index * 50} style={{ flex: 1, margin: 8 }}>
+            <ProductCard
+              product={item}
+              country={country}
+              onPress={() => handleProductPress(item.id)}
+              index={index}
+            />
+          </ContentFadeIn>
+        )}
+        contentContainerStyle={{ paddingBottom: 16 }}
+        refreshControl={
+          <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
+        }
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  searchBar: {
-    margin: 16,
-    marginBottom: 0,
-  },
-  listContent: {
-    padding: 16,
-    paddingTop: 8,
-  },
-});
 
 export default ProductsScreen;

@@ -1,5 +1,10 @@
+/**
+ * Modern Orders Screen with Timeline View and Status Animations
+ * Uses NativeWind for styling and Phase 2 components
+ */
+
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { View, Text, FlatList, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +21,9 @@ import {
   LoadingScreen,
   ErrorMessage,
   SkeletonLoader,
+  AnimatedView,
+  SkeletonCard,
+  ContentFadeIn,
 } from '../../components';
 import { getFilteredOrders } from '../../utils/orderUtils';
 import { debounce } from '../../utils/debounce';
@@ -82,14 +90,10 @@ const OrdersScreen = () => {
 
   if (isLoading) {
     return (
-      <View style={styles.container}>
+      <View className="flex-1 bg-neutral-50">
         <AppHeader title="My Orders" />
-        <View style={styles.loadingContainer}>
-          {[1, 2, 3].map((i) => (
-            <View key={i} style={styles.skeletonCard}>
-              <SkeletonLoader width="100%" height={120} borderRadius={12} />
-            </View>
-          ))}
+        <View className="px-4 pt-4">
+          <SkeletonCard type="order" count={3} />
         </View>
       </View>
     );
@@ -97,7 +101,7 @@ const OrdersScreen = () => {
 
   if (error) {
     return (
-      <View style={styles.container}>
+      <View className="flex-1 bg-neutral-50">
         <AppHeader title="My Orders" />
         <ErrorMessage
           message="Failed to load orders. Please try again."
@@ -107,16 +111,14 @@ const OrdersScreen = () => {
     );
   }
 
-  return (
-    <View style={styles.container}>
-      <AppHeader title="My Orders" />
-      
+  const renderHeader = () => (
+    <AnimatedView animation="fade" delay={0} className="px-4 pt-4 pb-2 bg-white">
       <SearchBar
         value={searchQuery}
         onChangeText={handleSearchChange}
         onClear={handleClearSearch}
         placeholder="Search by order number..."
-        style={styles.searchBar}
+        style={{ marginBottom: 12 }}
       />
 
       <OrderFilter
@@ -124,7 +126,24 @@ const OrdersScreen = () => {
         onStatusChange={setSelectedStatus}
       />
 
-      {filteredOrders.length === 0 ? (
+      {/* Results Count */}
+      <View className="flex-row items-center justify-between mt-3">
+        <Text className="text-sm text-neutral-500">
+          {filteredOrders.length} {filteredOrders.length === 1 ? 'order' : 'orders'} found
+        </Text>
+        {selectedStatus !== 'all' && (
+          <Text className="text-xs text-neutral-400 capitalize">
+            Filter: {selectedStatus}
+          </Text>
+        )}
+      </View>
+    </AnimatedView>
+  );
+
+  if (filteredOrders.length === 0) {
+    return (
+      <View className="flex-1 bg-neutral-50">
+        {renderHeader()}
         <EmptyState
           icon={searchQuery ? "magnify" : "package-variant"}
           title={searchQuery ? "No orders found" : "No orders yet"}
@@ -134,48 +153,35 @@ const OrdersScreen = () => {
               : "Your order history will appear here"
           }
         />
-      ) : (
-        <FlatList
-          data={filteredOrders}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
+      </View>
+    );
+  }
+
+  return (
+    <View className="flex-1 bg-neutral-50">
+      <AppHeader title="My Orders" />
+      
+      <FlatList
+        data={filteredOrders}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={renderHeader}
+        renderItem={({ item, index }) => (
+          <ContentFadeIn delay={index * 50} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
             <OrderCard
               order={item}
               country={country}
               onPress={() => handleOrderPress(item.id)}
             />
-          )}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
-          }
-        />
-      )}
+          </ContentFadeIn>
+        )}
+        contentContainerStyle={{ paddingBottom: 16 }}
+        refreshControl={
+          <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
+        }
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  searchBar: {
-    margin: 16,
-    marginBottom: 0,
-  },
-  listContent: {
-    padding: 16,
-    paddingTop: 8,
-  },
-  loadingContainer: {
-    flex: 1,
-    padding: 16,
-    gap: 12,
-  },
-  skeletonCard: {
-    marginBottom: 12,
-  },
-});
 
 export default OrdersScreen;

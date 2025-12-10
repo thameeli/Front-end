@@ -1,59 +1,121 @@
+/**
+ * Modern Card Component with Elevated Shadows
+ * Uses NativeWind for styling and design system shadows
+ */
+
 import React from 'react';
-import { View, StyleSheet, ViewStyle, TouchableOpacity } from 'react-native';
+import { ViewStyle, TouchableOpacity } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+import { getShadow } from '../theme/shadows';
+import { EASING } from '../utils/animations';
+
+import { View } from 'react-native';
+
+// Safe animated component creation with displayName
+let AnimatedTouchable: any;
+let AnimatedView: any;
+
+try {
+  AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+  AnimatedView = Animated.createAnimatedComponent(View);
+  
+  // Ensure displayName exists
+  if (AnimatedTouchable && !AnimatedTouchable.displayName) {
+    AnimatedTouchable.displayName = 'AnimatedTouchableOpacity';
+  }
+  if (AnimatedView && !AnimatedView.displayName) {
+    AnimatedView.displayName = 'AnimatedView';
+  }
+} catch (e) {
+  // Fallback to regular components
+  AnimatedTouchable = TouchableOpacity;
+  AnimatedView = View;
+}
 
 interface CardProps {
   children: React.ReactNode;
   style?: ViewStyle;
   onPress?: () => void;
-  elevation?: number;
+  elevation?: 'flat' | 'card' | 'raised' | 'floating' | 'modal';
   padding?: number;
+  className?: string; // Deprecated - use style prop instead
 }
 
 const Card: React.FC<CardProps> = ({
   children,
   style,
   onPress,
-  elevation = 2,
+  elevation = 'card',
   padding = 16,
+  className = '',
 }) => {
-  const cardStyle = [
-    styles.card,
-    { 
-      padding,
-      shadowOpacity: elevation > 0 ? 0.1 : 0,
-      shadowRadius: elevation * 2,
-      elevation: elevation,
-    },
-    style,
-  ];
+  const scale = useSharedValue(1);
+  const shadowOpacity = useSharedValue(0.1);
+  const shadowRadius = useSharedValue(4);
+
+  const handlePressIn = () => {
+    if (onPress) {
+      scale.value = withSpring(0.98, EASING.spring);
+      shadowOpacity.value = withTiming(0.2, { duration: 150 });
+      shadowRadius.value = withTiming(8, { duration: 150 });
+    }
+  };
+
+  const handlePressOut = () => {
+    if (onPress) {
+      scale.value = withSpring(1, EASING.spring);
+      shadowOpacity.value = withTiming(0.1, { duration: 150 });
+      shadowRadius.value = withTiming(4, { duration: 150 });
+    }
+  };
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    shadowOpacity: shadowOpacity.value,
+    shadowRadius: shadowRadius.value,
+  }));
+
+  const baseShadowStyle = getShadow(elevation === 'flat' ? 'none' : elevation === 'card' ? 'sm' : elevation === 'raised' ? 'md' : elevation === 'floating' ? 'lg' : 'xl');
+
+  const cardContent = (
+    <AnimatedView
+      style={[
+        {
+          padding,
+          backgroundColor: '#fff',
+          borderRadius: 12,
+          ...baseShadowStyle,
+        },
+        onPress ? animatedStyle : {},
+        style,
+      ]}
+    >
+      {children}
+    </AnimatedView>
+  );
 
   if (onPress) {
     return (
-      <TouchableOpacity
-        style={cardStyle}
+      <AnimatedTouchable
         onPress={onPress}
-        activeOpacity={0.7}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={1}
       >
-        {children}
-      </TouchableOpacity>
+        {cardContent}
+      </AnimatedTouchable>
     );
   }
 
-  return <View style={cardStyle}>{children}</View>;
+  return cardContent;
 };
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    marginBottom: 12,
-  },
-});
+// Set displayName for better debugging and NativeWind compatibility
+Card.displayName = 'Card';
 
 export default Card;
-

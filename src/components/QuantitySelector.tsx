@@ -120,5 +120,8 @@ const styles = StyleSheet.create({
   },
 });
 
+// Set displayName for better debugging and NativeWind compatibility
+QuantitySelector.displayName = 'QuantitySelector';
+
 export default QuantitySelector;
 

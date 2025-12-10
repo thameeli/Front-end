@@ -1,173 +1,190 @@
+/**
+ * Modern ProductCard with Image Overlay and Smooth Transitions
+ * Compatible with react-native-reanimated 3.x for Expo Go
+ */
+
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Image } from 'expo-image';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { ProgressiveImage } from './ProgressiveImage';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { Product } from '../types';
 import Button from './Button';
+import DiscountBadge from './DiscountBadge';
 import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { productService } from '../services';
 import { COUNTRIES } from '../constants';
 import type { Country } from '../constants';
+import { colors } from '../theme';
+import { EASING, ANIMATION_DURATION } from '../utils/animations';
+
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+const AnimatedView = Animated.createAnimatedComponent(View);
 
 interface ProductCardProps {
   product: Product;
   country?: Country;
   onPress?: () => void;
   onAddToCart?: () => void;
+  index?: number;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, country, onPress, onAddToCart }) => {
+const ProductCard: React.FC<ProductCardProps> = ({
+  product,
+  country,
+  onPress,
+  onAddToCart,
+  index = 0,
+}) => {
   const { addItem } = useCartStore();
   const { user } = useAuthStore();
   const selectedCountry = country || (user?.country_preference || COUNTRIES.GERMANY) as Country;
   const price = productService.getProductPrice(product, selectedCountry);
+  const originalPrice = selectedCountry === COUNTRIES.GERMANY
+    ? (product.original_price_germany || product.price_germany)
+    : (product.original_price_norway || product.price_norway);
+  const hasDiscount = originalPrice > price;
+  const discountPercentage = hasDiscount
+    ? Math.round(((originalPrice - price) / originalPrice) * 100)
+    : (product.discount_percentage || 0);
   const isInStock = product.stock > 0;
+
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(0);
+
+  React.useEffect(() => {
+    // Staggered entrance animation
+    setTimeout(() => {
+      opacity.value = withTiming(1, { duration: ANIMATION_DURATION.normal });
+    }, index * 50);
+  }, []);
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.98, EASING.spring);
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, EASING.spring);
+  };
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
 
   const handleAddToCart = () => {
     if (isInStock) {
-      // Use provided onAddToCart callback if available (for cart protection)
       if (onAddToCart) {
         onAddToCart();
       } else {
-        // Fallback to direct add (for authenticated users)
         addItem(product, 1, selectedCountry);
       }
     }
   };
 
   return (
-    <TouchableOpacity
-      style={styles.container}
+    <AnimatedTouchable
       onPress={onPress}
-      activeOpacity={0.7}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      activeOpacity={1}
+      style={animatedStyle}
+      className="bg-white rounded-xl mb-4 overflow-hidden shadow-md"
     >
-      <View style={styles.imageContainer}>
-        {product.image_url ? (
-          <Image
-            source={{ uri: product.image_url }}
-            style={styles.image}
-            contentFit="cover"
-            transition={200}
-          />
-        ) : (
-          <View style={styles.placeholderImage}>
-            <Icon name="image-off" size={40} color="#ccc" />
-          </View>
-        )}
-        {!isInStock && (
-          <View style={styles.outOfStockOverlay}>
-            <Text style={styles.outOfStockText}>Out of Stock</Text>
-          </View>
-        )}
-      </View>
+      <AnimatedView className="relative">
+            <View className="w-full h-48 relative">
+              {product.image_url ? (
+                <ProgressiveImage
+                  source={{ uri: product.image_url }}
+                  placeholder="skeleton"
+                  style={{ width: '100%', height: '100%' }}
+                  containerStyle={{ width: '100%', height: '100%' }}
+                />
+              ) : (
+                <View className="w-full h-full bg-neutral-100 justify-center items-center">
+                  <Icon name="image-off" size={40} color={colors.neutral[400]} />
+                </View>
+              )}
 
-      <View style={styles.content}>
-        <Text style={styles.name} numberOfLines={2}>
-          {product.name}
-        </Text>
-        <Text style={styles.category}>
-          {product.category === 'fresh' ? 'Fresh' : 'Frozen'}
-        </Text>
-        <View style={styles.priceRow}>
-          <Text style={styles.price}>
-            {selectedCountry === COUNTRIES.GERMANY ? '€' : 'NOK'} {price.toFixed(2)}
-          </Text>
-          {product.stock > 0 && (
-            <Text style={styles.stock}>
-              {product.stock} in stock
-            </Text>
+          {/* Category Badge */}
+          <View className="absolute top-2 left-2">
+            <View
+              className={`
+                px-2 py-1 rounded-md
+                ${product.category === 'fresh' ? 'bg-success-500' : 'bg-primary-500'}
+              `}
+            >
+              <Text className="text-xs font-semibold text-white capitalize">
+                {product.category}
+              </Text>
+            </View>
+          </View>
+
+          {/* Discount Badge */}
+          {discountPercentage > 0 && (
+            <DiscountBadge discount={discountPercentage} />
+          )}
+
+          {/* Out of Stock Overlay */}
+          {!isInStock && (
+            <View className="absolute inset-0 bg-black/50 justify-center items-center">
+              <View className="bg-white/90 px-4 py-2 rounded-lg">
+                <Text className="text-base font-bold text-neutral-900">Out of Stock</Text>
+              </View>
+            </View>
           )}
         </View>
-        <Button
-          title={isInStock ? 'Add to Cart' : 'Out of Stock'}
-          onPress={handleAddToCart}
-          disabled={!isInStock}
-          variant={isInStock ? 'primary' : 'outline'}
-          style={styles.addButton}
-        />
-      </View>
-    </TouchableOpacity>
+
+        <View className="p-4">
+          <Text className="text-base font-semibold text-neutral-900 mb-1" numberOfLines={2}>
+            {product.name}
+          </Text>
+
+          <View className="mb-3">
+            <View className="flex-row items-center mb-1">
+              <Text className="text-xl font-bold text-primary-500">
+                {selectedCountry === COUNTRIES.GERMANY ? '€' : 'NOK'} {price.toFixed(2)}
+              </Text>
+              {hasDiscount && originalPrice > price && (
+                <Text className="text-sm text-neutral-400 line-through ml-2">
+                  {selectedCountry === COUNTRIES.GERMANY ? '€' : 'NOK'} {originalPrice.toFixed(2)}
+                </Text>
+              )}
+            </View>
+            <View className="flex-row justify-between items-center">
+              {product.stock > 0 && (
+                <Text className="text-xs text-neutral-500">
+                  {product.stock} in stock
+                </Text>
+              )}
+              {hasDiscount && (
+                <View className="bg-error-50 px-2 py-1 rounded">
+                  <Text className="text-xs font-semibold text-error-600">
+                    Save {selectedCountry === COUNTRIES.GERMANY ? '€' : 'NOK'} {(originalPrice - price).toFixed(2)}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          <Button
+            title={isInStock ? 'Add to Cart' : 'Out of Stock'}
+            onPress={handleAddToCart}
+            disabled={!isInStock}
+            variant={isInStock ? 'primary' : 'outline'}
+            size="sm"
+            fullWidth
+          />
+        </View>
+      </AnimatedView>
+    </AnimatedTouchable>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    overflow: 'hidden',
-  },
-  imageContainer: {
-    width: '100%',
-    height: 180,
-    position: 'relative',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  placeholderImage: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  outOfStockOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  outOfStockText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  content: {
-    padding: 12,
-  },
-  name: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 4,
-  },
-  category: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 8,
-    textTransform: 'capitalize',
-  },
-  priceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  price: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#007AFF',
-  },
-  stock: {
-    fontSize: 12,
-    color: '#666',
-  },
-  addButton: {
-    marginTop: 0,
-  },
-});
-
 export default ProductCard;
-

@@ -58,50 +58,213 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       
       // Verify auth object exists
       if (!supabase.auth) {
+        console.error('❌ [authStore] Auth object not available');
         return { success: false, error: 'Authentication service not available' };
       }
       
       // Supabase v1.x uses signIn, not signInWithPassword
       const auth = supabase.auth as any;
       
-      // Use signIn for v1.x (signInWithPassword is for v2.x)
-      const { data, error } = await auth.signIn({
-        email,
-        password,
+      console.log('🔵 [authStore] Attempting login for:', email);
+      console.log('🔵 [authStore] Available auth methods:', {
+        hasSignIn: typeof auth.signIn === 'function',
+        hasSignInWithPassword: typeof auth.signInWithPassword === 'function',
+        hasSignInWithEmail: typeof auth.signInWithEmail === 'function',
+        authMethods: Object.keys(auth).filter(key => typeof auth[key] === 'function'),
+      });
+      
+      // Try signInWithPassword first (some v1.x versions support it)
+      // Then fallback to signIn
+      let response;
+      if (typeof auth.signInWithPassword === 'function') {
+        console.log('🔵 [authStore] Using signInWithPassword...');
+        response = await auth.signInWithPassword({
+          email,
+          password,
+        });
+      } else if (typeof auth.signIn === 'function') {
+        console.log('🔵 [authStore] Using signIn...');
+        // Try different formats for v1.x
+        try {
+          response = await auth.signIn({
+            email,
+            password,
+          });
+        } catch (signInError: any) {
+          // Try alternative format
+          console.log('🔵 [authStore] Trying alternative signIn format...');
+          response = await auth.signIn(email, password);
+        }
+      } else {
+        return { success: false, error: 'Authentication method not available' };
+      }
+
+      console.log('🔵 [authStore] SignIn response:', {
+        hasData: !!response.data,
+        hasError: !!response.error,
+        dataKeys: response.data ? Object.keys(response.data) : [],
+        errorMessage: response.error?.message,
+        errorStatus: response.error?.status,
+        errorCode: response.error?.code,
       });
 
-      if (error) {
-        return { success: false, error: error.message };
+      if (response.error) {
+        console.error('❌ [authStore] Login error:', {
+          message: response.error.message,
+          status: response.error.status,
+          code: response.error.code,
+        });
+        
+        // Provide more helpful error messages
+        let errorMessage = response.error.message;
+        if (response.error.status === 400) {
+          if (response.error.message?.includes('Invalid login credentials')) {
+            errorMessage = 'Invalid email or password. Please check your credentials.';
+          } else if (response.error.message?.includes('Email not confirmed')) {
+            errorMessage = 'Please confirm your email address before logging in.';
+          } else {
+            errorMessage = response.error.message || 'Invalid login credentials';
+          }
+        }
+        
+        return { success: false, error: errorMessage };
       }
 
-      if (data.user && data.session) {
-        const { data: profile } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
+      // Handle different response structures for Supabase v1.x
+      // Response might be: { data: { user, session } } or { user, session } or just the data
+      let user = null;
+      let session = null;
 
-        const user: User = {
-          id: data.user.id,
-          email: data.user.email || email,
-          phone: data.user.phone || profile?.phone,
-          name: profile?.name || data.user.user_metadata?.name,
-          role: profile?.role || 'customer',
-          country_preference: profile?.country_preference,
-          created_at: data.user.created_at,
-        };
-
-        get().setUser(user);
-        get().setToken(data.session.access_token);
-        
-        // Force state update to trigger navigation
-        set({ isAuthenticated: true, user, token: data.session.access_token });
-        
-        return { success: true };
+      // Try different response structures
+      if (response.data) {
+        user = response.data.user || response.data;
+        session = response.data.session;
+      } else if (response.user) {
+        user = response.user;
+        session = response.session;
+      } else {
+        // Response might be the data directly
+        user = response.user || response;
+        session = response.session;
       }
 
-      return { success: false, error: 'Login failed' };
+      console.log('🔵 [authStore] Extracted user and session:', {
+        hasUser: !!user,
+        hasSession: !!session,
+        userId: user?.id,
+        userEmail: user?.email,
+      });
+
+      if (!user || !user.id) {
+        console.error('❌ [authStore] No user in response:', {
+          responseKeys: Object.keys(response),
+          responseDataKeys: response.data ? Object.keys(response.data) : [],
+        });
+        return { success: false, error: 'Login failed: No user data received' };
+      }
+
+      // If no session in response, try to get it from auth (Supabase persists it)
+      let finalSession = session;
+      if (!finalSession || !finalSession.access_token) {
+        console.log('🔵 [authStore] No session in response, trying to get from auth storage...');
+        try {
+          // Wait a bit for Supabase to persist the session
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          if (typeof auth.getSession === 'function') {
+            const sessionResponse = await auth.getSession();
+            console.log('🔵 [authStore] getSession response:', {
+              hasData: !!sessionResponse?.data,
+              hasSession: !!sessionResponse?.session,
+              keys: sessionResponse ? Object.keys(sessionResponse) : [],
+            });
+            finalSession = sessionResponse?.data?.session || sessionResponse?.session || sessionResponse?.data || sessionResponse;
+          } else if (typeof auth.session === 'function') {
+            finalSession = await auth.session();
+          } else if (auth.session) {
+            finalSession = auth.session;
+          }
+          
+          // Also try to get from AsyncStorage directly
+          if (!finalSession || !finalSession.access_token) {
+            const storedToken = await AsyncStorage.getItem(STORAGE_KEYS.USER_TOKEN);
+            if (storedToken) {
+              console.log('🔵 [authStore] Found token in storage, creating session object');
+              finalSession = { access_token: storedToken };
+            }
+          }
+        } catch (sessionError) {
+          console.warn('⚠️ [authStore] Could not get session:', sessionError);
+        }
+      }
+
+      if (!finalSession || !finalSession.access_token) {
+        console.error('❌ [authStore] No session or access token:', {
+          hasSession: !!finalSession,
+          sessionKeys: finalSession ? Object.keys(finalSession) : [],
+          responseStructure: JSON.stringify(response).substring(0, 200),
+        });
+        return { success: false, error: 'Login failed: No session token received. Please try again.' };
+      }
+
+      console.log('✅ [authStore] User and session received, fetching profile...');
+
+      // Fetch user profile from database
+      const { data: profile, error: profileError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) {
+        console.warn('⚠️ [authStore] Profile fetch error (continuing anyway):', profileError.message);
+      }
+
+      const userData: User = {
+        id: user.id,
+        email: user.email || email,
+        phone: user.phone || profile?.phone,
+        name: profile?.name || user.user_metadata?.name || user.email?.split('@')[0],
+        role: profile?.role || 'customer',
+        country_preference: profile?.country_preference,
+        created_at: user.created_at,
+      };
+
+      console.log('✅ [authStore] Setting user data:', {
+        id: userData.id,
+        email: userData.email,
+        name: userData.name,
+        role: userData.role,
+      });
+
+      // Set user and token in storage first
+      await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
+      await AsyncStorage.setItem(STORAGE_KEYS.USER_TOKEN, finalSession.access_token);
+
+      // Set user and token in state
+      get().setUser(userData);
+      get().setToken(finalSession.access_token);
+      
+      // Force state update to trigger navigation
+      set({ 
+        isAuthenticated: true, 
+        user: userData, 
+        token: finalSession.access_token,
+        isLoading: false,
+      });
+      
+      // Verify state was updated
+      const currentState = get();
+      console.log('✅ [authStore] Login successful, state updated:', {
+        isAuthenticated: currentState.isAuthenticated,
+        hasUser: !!currentState.user,
+        hasToken: !!currentState.token,
+        userId: currentState.user?.id,
+      });
+      
+      return { success: true };
     } catch (error: any) {
+      console.error('❌ [authStore] Login exception:', error);
       return { success: false, error: error.message || 'An error occurred' };
     } finally {
       set({ isLoading: false });
@@ -117,6 +280,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         password,
         options: {
           data: { name, phone },
+          // Disable email confirmation redirect for mobile app
+          // Users will be auto-logged in if email confirmation is disabled in Supabase
+          emailRedirectTo: undefined, // Don't set redirect URL for mobile
         },
       });
 
@@ -202,15 +368,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const supabase = getSupabase();
       const auth = supabase.auth as any;
       await auth.signOut();
-      get().setUser(null);
-      get().setToken(null);
+      
+      // Clear all auth state
+      set({ 
+        user: null, 
+        token: null, 
+        isAuthenticated: false 
+      });
+      
+      // Clear storage
       await AsyncStorage.multiRemove([
         STORAGE_KEYS.USER_TOKEN,
         STORAGE_KEYS.USER_DATA,
         STORAGE_KEYS.CART,
       ]);
+      
+      console.log('✅ Logout successful - state cleared');
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error('❌ Error logging out:', error);
+      // Still clear local state even if signOut fails
+      set({ 
+        user: null, 
+        token: null, 
+        isAuthenticated: false 
+      });
     }
   },
 

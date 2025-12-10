@@ -1,6 +1,12 @@
+/**
+ * Enhanced Admin Products Screen with Modern Product Management UI
+ * Uses NativeWind for styling and Phase 2 components
+ */
+
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Alert, StyleSheet, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -16,20 +22,32 @@ import {
   ErrorMessage,
   SearchBar,
   FilterBar,
+  AnimatedView,
+  Badge,
+  Card,
+  SkeletonCard,
+  ContentFadeIn,
 } from '../../components';
 import { getFilteredProducts } from '../../utils/productUtils';
 import { debounce } from '../../utils/debounce';
 import { COUNTRIES, PRODUCT_CATEGORIES } from '../../constants';
 import type { Country } from '../../constants';
 import type { ProductCategory } from '../../types';
+import { colors } from '../../theme';
 
 type AdminProductsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AdminProducts'>;
 
 const AdminProductsScreen = () => {
   const navigation = useNavigation<AdminProductsScreenNavigationProp>();
   const queryClient = useQueryClient();
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const country = (user?.country_preference || COUNTRIES.GERMANY) as Country;
+  
+  // Calculate tab bar height to position button above it
+  const tabBarHeight = Platform.OS === 'ios' ? 60 : 56;
+  const bottomPadding = Math.max(insets.bottom, Platform.OS === 'ios' ? 8 : 4);
+  const totalTabBarHeight = tabBarHeight + bottomPadding;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
@@ -120,12 +138,19 @@ const AdminProductsScreen = () => {
   };
 
   if (isLoading) {
-    return <LoadingScreen message="Loading products..." />;
+    return (
+      <View className="flex-1 bg-neutral-50">
+        <AppHeader title="Manage Products" />
+        <View className="px-4 pt-4">
+          <SkeletonCard type="product" count={3} />
+        </View>
+      </View>
+    );
   }
 
   if (error) {
     return (
-      <View style={styles.container}>
+      <View className="flex-1 bg-neutral-50">
         <AppHeader title="Manage Products" />
         <ErrorMessage
           message="Failed to load products. Please try again."
@@ -135,15 +160,17 @@ const AdminProductsScreen = () => {
     );
   }
 
-  return (
-    <View style={styles.container}>
-      <AppHeader
-        title="Manage Products"
-        rightAction={{
-          icon: 'plus',
-          onPress: handleAddProduct,
-        }}
-      />
+  const renderHeader = () => (
+    <AnimatedView animation="fade" delay={0} className="px-4 pt-4 pb-2 bg-white">
+      <View className="flex-row items-center justify-between mb-4">
+        <Text className="text-2xl font-bold text-neutral-900">Manage Products</Text>
+        <TouchableOpacity
+          onPress={handleAddProduct}
+          className="w-10 h-10 rounded-full bg-primary-500 justify-center items-center"
+        >
+          <Icon name="plus" size={24} color="white" />
+        </TouchableOpacity>
+      </View>
 
       <SearchBar
         value={searchQuery}
@@ -153,7 +180,7 @@ const AdminProductsScreen = () => {
           setDebouncedSearchQuery('');
         }}
         placeholder="Search products..."
-        style={styles.searchBar}
+        style={{ marginBottom: 12 }}
       />
 
       <FilterBar
@@ -163,144 +190,142 @@ const AdminProductsScreen = () => {
         onSortChange={() => {}}
       />
 
-      {filteredProducts.length === 0 ? (
+      {/* Results Count */}
+      <View className="flex-row items-center justify-between mt-3">
+        <Text className="text-sm text-neutral-500">
+          {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'} found
+        </Text>
+        {selectedCategory !== 'all' && (
+          <Badge variant="primary" size="sm">
+            {selectedCategory}
+          </Badge>
+        )}
+      </View>
+    </AnimatedView>
+  );
+
+  if (filteredProducts.length === 0) {
+    return (
+      <View className="flex-1 bg-neutral-50">
+        {renderHeader()}
         <EmptyState
           icon="store-off"
           title={searchQuery ? "No products found" : "No products"}
           message={searchQuery ? "Try adjusting your search" : "Add your first product"}
+          actionLabel="Add Product"
+          onAction={handleAddProduct}
         />
-      ) : (
-        <FlatList
-          data={filteredProducts}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.productCard}>
+      </View>
+    );
+  }
+
+  return (
+    <View className="flex-1 bg-neutral-50">
+      <AppHeader title="Manage Products" />
+      
+      <FlatList
+        data={filteredProducts}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={renderHeader}
+        renderItem={({ item, index }) => (
+          <ContentFadeIn delay={index * 50} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+            <Card elevation="card" className="overflow-hidden">
               <ProductCard
                 product={item}
+                country={country}
                 onPress={() => handleEditProduct(item.id)}
+                index={index}
               />
-              <View style={styles.actions}>
+              
+              {/* Admin Actions */}
+              <View className="flex-row gap-2 p-4 bg-neutral-50 border-t border-neutral-200">
                 <TouchableOpacity
-                  style={[styles.actionButton, !item.active && styles.activeButton]}
                   onPress={() => handleToggleActive(item)}
+                  className={`
+                    flex-1 flex-row items-center justify-center p-3 rounded-lg border-2
+                    ${item.active ? 'border-neutral-300 bg-white' : 'border-success-500 bg-success-50'}
+                  `}
                 >
                   <Icon
                     name={item.active ? 'eye-off' : 'eye'}
-                    size={20}
-                    color={item.active ? '#666' : '#34C759'}
+                    size={18}
+                    color={item.active ? colors.neutral[500] : colors.success[500]}
                   />
                   <Text
-                    style={[
-                      styles.actionText,
-                      !item.active && styles.activeText,
-                    ]}
+                    className={`
+                      text-sm font-semibold ml-2
+                      ${item.active ? 'text-neutral-600' : 'text-success-500'}
+                    `}
                   >
                     {item.active ? 'Deactivate' : 'Activate'}
                   </Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity
-                  style={[styles.actionButton, styles.editButton]}
                   onPress={() => handleEditProduct(item.id)}
+                  className="flex-1 flex-row items-center justify-center p-3 rounded-lg border-2 border-primary-500 bg-primary-50"
                 >
-                  <Icon name="pencil" size={20} color="#007AFF" />
-                  <Text style={[styles.actionText, styles.editText]}>Edit</Text>
+                  <Icon name="pencil" size={18} color={colors.primary[500]} />
+                  <Text className="text-sm font-semibold text-primary-500 ml-2">
+                    Edit
+                  </Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity
-                  style={[styles.actionButton, styles.deleteButton]}
                   onPress={() => handleDeleteProduct(item)}
+                  className="flex-1 flex-row items-center justify-center p-3 rounded-lg border-2 border-error-500 bg-error-50"
                 >
-                  <Icon name="delete" size={20} color="#FF3B30" />
-                  <Text style={[styles.actionText, styles.deleteText]}>Delete</Text>
+                  <Icon name="delete" size={18} color={colors.error[500]} />
+                  <Text className="text-sm font-semibold text-error-500 ml-2">
+                    Delete
+                  </Text>
                 </TouchableOpacity>
               </View>
-            </View>
-          )}
-          contentContainerStyle={styles.listContent}
-        />
-      )}
+            </Card>
+          </ContentFadeIn>
+        )}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
+      />
 
-      <View style={styles.footer}>
+      {/* Sticky Add Button - Positioned above tab bar */}
+      <AnimatedView
+        animation="slide"
+        delay={0}
+        enterFrom="bottom"
+        style={[
+          styles.stickyContainer,
+          { bottom: totalTabBarHeight }
+        ]}
+      >
         <Button
           title="Add New Product"
           onPress={handleAddProduct}
           fullWidth
-          style={styles.addButton}
+          size="lg"
+          icon={<Icon name="plus" size={20} color="white" />}
         />
-      </View>
+      </AnimatedView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  searchBar: {
-    margin: 16,
-    marginBottom: 0,
-  },
-  listContent: {
-    padding: 16,
-    paddingTop: 8,
-  },
-  productCard: {
-    marginBottom: 16,
-  },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 8,
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fff',
-    gap: 4,
-  },
-  activeButton: {
-    borderColor: '#34C759',
-    backgroundColor: '#e6f9ed',
-  },
-  editButton: {
-    borderColor: '#007AFF',
-    backgroundColor: '#f0f7ff',
-  },
-  deleteButton: {
-    borderColor: '#FF3B30',
-    backgroundColor: '#ffe6e6',
-  },
-  actionText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#666',
-  },
-  activeText: {
-    color: '#34C759',
-  },
-  editText: {
-    color: '#007AFF',
-  },
-  deleteText: {
-    color: '#FF3B30',
-  },
-  footer: {
-    padding: 16,
+  stickyContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
     backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  addButton: {
-    marginTop: 0,
+    borderTopColor: '#E5E5E5',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
   },
 });
 

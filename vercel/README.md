@@ -60,6 +60,29 @@ POST /api/whatsapp-notification
 }
 ```
 
+### Create Payment Intent (`/api/create-payment-intent`)
+
+Creates a Stripe payment intent for processing payments.
+
+**Request:**
+```json
+POST /api/create-payment-intent
+{
+  "orderId": "order-id",
+  "amount": 50.00,
+  "currency": "eur",
+  "metadata": {}
+}
+```
+
+**Response:**
+```json
+{
+  "clientSecret": "pi_xxx_secret_xxx",
+  "paymentIntentId": "pi_xxx"
+}
+```
+
 ### Stripe Webhook (`/api/stripe-webhook`)
 
 Handles Stripe webhook events for payment processing.

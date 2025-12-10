@@ -7,4 +7,5 @@ declare module '@env' {
   export const TWILIO_ACCOUNT_SID: string;
   export const TWILIO_AUTH_TOKEN: string;
   export const TWILIO_WHATSAPP_NUMBER: string;
+  export const EXPO_PUBLIC_VERCEL_API_URL: string;
 }

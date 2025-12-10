@@ -21,6 +21,9 @@ export interface Product {
   category: ProductCategory;
   price_germany: number;
   price_norway: number;
+  original_price_germany?: number; // Original price before discount
+  original_price_norway?: number; // Original price before discount
+  discount_percentage?: number; // Discount percentage (0-100)
   stock: number;
   image_url?: string;
   active: boolean;

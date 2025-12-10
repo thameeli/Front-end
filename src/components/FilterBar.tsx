@@ -1,7 +1,14 @@
+/**
+ * Enhanced FilterBar with Icons
+ * Modern filter design with visual icons for categories and sort options
+ */
+
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { ProductCategory } from '../types';
 import { PRODUCT_CATEGORIES } from '../constants';
+import { colors } from '../theme';
 
 interface FilterBarProps {
   selectedCategory: ProductCategory | 'all';
@@ -18,56 +25,91 @@ const FilterBar: React.FC<FilterBarProps> = ({
 }) => {
   return (
     <View style={styles.container}>
-      <View style={styles.categorySection}>
-        <Text style={styles.label}>Category:</Text>
-        <View style={styles.categoryButtons}>
+      {/* Category Section */}
+      <View style={styles.section}>
+        <View style={styles.labelContainer}>
+          <Icon name="tag" size={16} color={colors.neutral[600]} style={styles.labelIcon} />
+          <Text style={styles.label}>Category:</Text>
+        </View>
+        <View style={styles.buttonRow}>
           <TouchableOpacity
             style={[
-              styles.categoryButton,
-              selectedCategory === 'all' && styles.categoryButtonActive,
+              styles.filterButton,
+              selectedCategory === 'all' && styles.filterButtonActive,
             ]}
             onPress={() => onCategoryChange('all')}
+            activeOpacity={0.7}
           >
+            <Icon
+              name="view-grid"
+              size={16}
+              color={selectedCategory === 'all' ? '#fff' : colors.neutral[600]}
+              style={styles.buttonIcon}
+            />
             <Text
               style={[
-                styles.categoryButtonText,
-                selectedCategory === 'all' && styles.categoryButtonTextActive,
+                styles.filterButtonText,
+                selectedCategory === 'all' && styles.filterButtonTextActive,
               ]}
             >
               All
             </Text>
           </TouchableOpacity>
+          
           <TouchableOpacity
             style={[
-              styles.categoryButton,
+              styles.filterButton,
               selectedCategory === PRODUCT_CATEGORIES.FRESH &&
-                styles.categoryButtonActive,
+                styles.filterButtonActive,
             ]}
             onPress={() => onCategoryChange(PRODUCT_CATEGORIES.FRESH)}
+            activeOpacity={0.7}
           >
+            <Icon
+              name="fish"
+              size={16}
+              color={
+                selectedCategory === PRODUCT_CATEGORIES.FRESH
+                  ? '#fff'
+                  : colors.success[600]
+              }
+              style={styles.buttonIcon}
+            />
             <Text
               style={[
-                styles.categoryButtonText,
+                styles.filterButtonText,
                 selectedCategory === PRODUCT_CATEGORIES.FRESH &&
-                  styles.categoryButtonTextActive,
+                  styles.filterButtonTextActive,
               ]}
             >
               Fresh
             </Text>
           </TouchableOpacity>
+          
           <TouchableOpacity
             style={[
-              styles.categoryButton,
+              styles.filterButton,
               selectedCategory === PRODUCT_CATEGORIES.FROZEN &&
-                styles.categoryButtonActive,
+                styles.filterButtonActive,
             ]}
             onPress={() => onCategoryChange(PRODUCT_CATEGORIES.FROZEN)}
+            activeOpacity={0.7}
           >
+            <Icon
+              name="snowflake"
+              size={16}
+              color={
+                selectedCategory === PRODUCT_CATEGORIES.FROZEN
+                  ? '#fff'
+                  : colors.primary[600]
+              }
+              style={styles.buttonIcon}
+            />
             <Text
               style={[
-                styles.categoryButtonText,
+                styles.filterButtonText,
                 selectedCategory === PRODUCT_CATEGORIES.FROZEN &&
-                  styles.categoryButtonTextActive,
+                  styles.filterButtonTextActive,
               ]}
             >
               Frozen
@@ -76,52 +118,79 @@ const FilterBar: React.FC<FilterBarProps> = ({
         </View>
       </View>
 
-      <View style={styles.sortSection}>
-        <Text style={styles.label}>Sort:</Text>
-        <View style={styles.sortButtons}>
+      {/* Sort Section */}
+      <View style={styles.section}>
+        <View style={styles.labelContainer}>
+          <Icon name="sort" size={16} color={colors.neutral[600]} style={styles.labelIcon} />
+          <Text style={styles.label}>Sort:</Text>
+        </View>
+        <View style={styles.buttonRow}>
           <TouchableOpacity
             style={[
-              styles.sortButton,
-              sortBy === 'name' && styles.sortButtonActive,
+              styles.filterButton,
+              sortBy === 'name' && styles.filterButtonActive,
             ]}
             onPress={() => onSortChange('name')}
+            activeOpacity={0.7}
           >
+            <Icon
+              name="sort-alphabetical"
+              size={16}
+              color={sortBy === 'name' ? '#fff' : colors.neutral[600]}
+              style={styles.buttonIcon}
+            />
             <Text
               style={[
-                styles.sortButtonText,
-                sortBy === 'name' && styles.sortButtonTextActive,
+                styles.filterButtonText,
+                sortBy === 'name' && styles.filterButtonTextActive,
               ]}
             >
               Name
             </Text>
           </TouchableOpacity>
+          
           <TouchableOpacity
             style={[
-              styles.sortButton,
-              sortBy === 'price_asc' && styles.sortButtonActive,
+              styles.filterButton,
+              sortBy === 'price_asc' && styles.filterButtonActive,
             ]}
             onPress={() => onSortChange('price_asc')}
+            activeOpacity={0.7}
           >
+            <Icon
+              name="sort-ascending"
+              size={16}
+              color={sortBy === 'price_asc' ? '#fff' : colors.neutral[600]}
+              style={styles.buttonIcon}
+            />
             <Text
               style={[
-                styles.sortButtonText,
-                sortBy === 'price_asc' && styles.sortButtonTextActive,
+                styles.filterButtonText,
+                sortBy === 'price_asc' && styles.filterButtonTextActive,
               ]}
             >
               Price ↑
             </Text>
           </TouchableOpacity>
+          
           <TouchableOpacity
             style={[
-              styles.sortButton,
-              sortBy === 'price_desc' && styles.sortButtonActive,
+              styles.filterButton,
+              sortBy === 'price_desc' && styles.filterButtonActive,
             ]}
             onPress={() => onSortChange('price_desc')}
+            activeOpacity={0.7}
           >
+            <Icon
+              name="sort-descending"
+              size={16}
+              color={sortBy === 'price_desc' ? '#fff' : colors.neutral[600]}
+              style={styles.buttonIcon}
+            />
             <Text
               style={[
-                styles.sortButtonText,
-                sortBy === 'price_desc' && styles.sortButtonTextActive,
+                styles.filterButtonText,
+                sortBy === 'price_desc' && styles.filterButtonTextActive,
               ]}
             >
               Price ↓
@@ -137,70 +206,58 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#fff',
     padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
-  categorySection: {
+  section: {
     marginBottom: 12,
   },
-  sortSection: {
-    marginTop: 4,
+  labelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000',
-    marginBottom: 8,
+    color: colors.neutral[700],
   },
-  categoryButtons: {
+  buttonRow: {
     flexDirection: 'row',
-    gap: 8,
+    flexWrap: 'wrap',
   },
-  categoryButton: {
-    paddingHorizontal: 16,
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    borderWidth: 1.5,
+    borderColor: colors.neutral[200],
     backgroundColor: '#fff',
+    marginRight: 8,
+    marginBottom: 8,
   },
-  categoryButtonActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+  labelIcon: {
+    marginRight: 6,
   },
-  categoryButtonText: {
-    fontSize: 14,
-    color: '#666',
+  filterButtonActive: {
+    backgroundColor: colors.primary[500],
+    borderColor: colors.primary[500],
+  },
+  filterButtonText: {
+    fontSize: 13,
+    color: colors.neutral[700],
     fontWeight: '500',
   },
-  categoryButtonTextActive: {
+  filterButtonTextActive: {
     color: '#fff',
+    fontWeight: '600',
   },
-  sortButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  sortButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fff',
-  },
-  sortButtonActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  sortButtonText: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
-  },
-  sortButtonTextActive: {
-    color: '#fff',
+  buttonIcon: {
+    marginRight: 6,
   },
 });
 
-export default FilterBar;
+// Set displayName for better debugging
+FilterBar.displayName = 'FilterBar';
 
+export default FilterBar;

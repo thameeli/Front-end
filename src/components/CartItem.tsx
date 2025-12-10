@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { CartItem as CartItemType } from '../types';
-import { QuantitySelector } from './QuantitySelector';
+import QuantitySelector from './QuantitySelector';
 import { formatPrice } from '../utils/productUtils';
 import { COUNTRIES } from '../constants';
 import type { Country } from '../constants';
@@ -166,6 +166,9 @@ const styles = StyleSheet.create({
     color: '#000',
   },
 });
+
+// Set displayName for better debugging and NativeWind compatibility
+CartItem.displayName = 'CartItem';
 
 export default CartItem;
 

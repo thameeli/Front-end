@@ -33,8 +33,16 @@ SUPABASE_ANON_KEY=your-anon-key-here
 
 # Optional - Add later when needed
 SUPABASE_SERVICE_KEY=your-service-key-here
+
+# Stripe Configuration (Required for online payments)
 STRIPE_PUBLISHABLE_KEY=pk_test_your_key_here
-STRIPE_SECRET_KEY=sk_test_your_key_here
+STRIPE_SECRET_KEY=sk_test_your_key_here  # Only used in Vercel functions
+
+# Vercel API URL (Required for Stripe and WhatsApp)
+EXPO_PUBLIC_VERCEL_API_URL=https://your-vercel-app.vercel.app
+# For local development: EXPO_PUBLIC_VERCEL_API_URL=http://localhost:3000
+
+# Twilio Configuration (Required for WhatsApp notifications)
 TWILIO_ACCOUNT_SID=your_twilio_account_sid
 TWILIO_AUTH_TOKEN=your_twilio_auth_token
 TWILIO_WHATSAPP_NUMBER=whatsapp:+1234567890

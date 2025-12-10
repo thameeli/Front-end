@@ -1,6 +1,22 @@
-import React from 'react';
-import { View, ActivityIndicator, Text, StyleSheet, Modal } from 'react-native';
+/**
+ * Modern Loading Overlay with Skeleton Animation
+ * Replaces ActivityIndicator with beautiful skeleton loader
+ */
+
+import React, { useEffect } from 'react';
+import { View, Text, Modal } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  withSpring,
+} from 'react-native-reanimated';
+import { SkeletonLoader } from './SkeletonLoader';
+import { colors } from '../theme';
+import { EASING, ANIMATION_DURATION } from '../utils/animations';
+
+const AnimatedView = Animated.createAnimatedComponent(View);
 
 interface LoadingOverlayProps {
   visible: boolean;
@@ -12,45 +28,57 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
   message,
 }) => {
   const { t } = useTranslation();
+  const opacity = useSharedValue(0);
+  const scale = useSharedValue(0.9);
+
+  useEffect(() => {
+    if (visible) {
+      opacity.value = withTiming(1, { duration: 200 });
+      scale.value = withSpring(1, EASING.spring);
+    } else {
+      opacity.value = withTiming(0, { duration: 200 });
+      scale.value = withTiming(0.9, { duration: 200 });
+    }
+  }, [visible]);
+
+  const overlayStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  const containerStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
+
+  if (!visible) {
+    return null;
+  }
 
   return (
     <Modal
       transparent
       visible={visible}
-      animationType="fade"
+      animationType="none"
       statusBarTranslucent
     >
-      <View style={styles.overlay}>
-        <View style={styles.container}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          {message && <Text style={styles.message}>{message}</Text>}
-        </View>
-      </View>
+      <AnimatedView
+        style={overlayStyle}
+        className="flex-1 bg-black/50 justify-center items-center"
+      >
+        <AnimatedView
+          style={containerStyle}
+          className="bg-white rounded-2xl p-6 items-center min-w-[140px] shadow-2xl"
+        >
+          <SkeletonLoader width={60} height={60} borderRadius={30} className="mb-4" />
+          {message && (
+            <Text className="text-sm text-neutral-600 text-center mt-2">
+              {message}
+            </Text>
+          )}
+        </AnimatedView>
+      </AnimatedView>
     </Modal>
   );
 };
 
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  container: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 24,
-    alignItems: 'center',
-    minWidth: 120,
-  },
-  message: {
-    marginTop: 16,
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-  },
-});
-
 export default LoadingOverlay;
-

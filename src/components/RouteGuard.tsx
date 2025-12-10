@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import { canAccessRoute } from '../utils/rbac';
-import { Button } from './Button';
+import Button from './Button';
 import { useNavigation } from '@react-navigation/native';
 
 interface RouteGuardProps {

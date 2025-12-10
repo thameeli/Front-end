@@ -1,8 +1,14 @@
+/**
+ * Modern Admin Orders Screen with Modern Order List and Filters
+ * Uses NativeWind for styling and Phase 2 components
+ */
+
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { View, Text, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useQuery } from '@tanstack/react-query';
+import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { RootStackParamList, OrderStatus } from '../../types';
 import { orderService } from '../../services/orderService';
 import { useOrderRealtime } from '../../hooks/useOrderRealtime';
@@ -15,11 +21,16 @@ import {
   EmptyState,
   LoadingScreen,
   ErrorMessage,
+  AnimatedView,
+  Badge,
+  SkeletonCard,
+  ContentFadeIn,
 } from '../../components';
 import { getFilteredOrders } from '../../utils/orderUtils';
 import { debounce } from '../../utils/debounce';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
+import { colors } from '../../theme';
 
 type AdminOrdersScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AdminOrders'>;
 
@@ -59,9 +70,10 @@ const AdminOrdersScreen = () => {
     isRefetching,
   } = useQuery({
     queryKey: ['allOrders', selectedStatus !== 'all' ? selectedStatus : undefined],
-    queryFn: () => orderService.getAllOrders(
-      selectedStatus !== 'all' ? { status: selectedStatus } : undefined
-    ),
+    queryFn: () =>
+      orderService.getAllOrders(
+        selectedStatus !== 'all' ? { status: selectedStatus } : undefined
+      ),
   });
 
   // Filter orders
@@ -86,12 +98,19 @@ const AdminOrdersScreen = () => {
   };
 
   if (isLoading) {
-    return <LoadingScreen message="Loading orders..." />;
+    return (
+      <View className="flex-1 bg-neutral-50">
+        <AppHeader title="Manage Orders" />
+        <View className="px-4 pt-4">
+          <SkeletonCard type="order" count={3} />
+        </View>
+      </View>
+    );
   }
 
   if (error) {
     return (
-      <View style={styles.container}>
+      <View className="flex-1 bg-neutral-50">
         <AppHeader title="Manage Orders" />
         <ErrorMessage
           message="Failed to load orders. Please try again."
@@ -101,9 +120,9 @@ const AdminOrdersScreen = () => {
     );
   }
 
-  return (
-    <View style={styles.container}>
-      <AppHeader title="Manage Orders" />
+  const renderHeader = () => (
+    <AnimatedView animation="fade" delay={0} className="px-4 pt-4 pb-2 bg-white">
+      <Text className="text-2xl font-bold text-neutral-900 mb-4">Manage Orders</Text>
 
       <SearchBar
         value={searchQuery}
@@ -113,7 +132,7 @@ const AdminOrdersScreen = () => {
           setDebouncedSearchQuery('');
         }}
         placeholder="Search by order number..."
-        style={styles.searchBar}
+        style={{ marginBottom: 12 }}
       />
 
       <OrderFilter
@@ -121,23 +140,32 @@ const AdminOrdersScreen = () => {
         onStatusChange={setSelectedStatus}
       />
 
-      <View style={styles.countryFilter}>
-        <Text style={styles.countryFilterLabel}>Country:</Text>
-        <View style={styles.countryButtons}>
+      {/* Country Filter */}
+      <View className="mt-4 mb-2">
+        <Text className="text-sm font-semibold text-neutral-700 mb-3">Country Filter</Text>
+        <View className="flex-row gap-2">
           {(['all', 'germany', 'norway'] as const).map((countryOption) => (
             <TouchableOpacity
               key={countryOption}
-              style={[
-                styles.countryButton,
-                selectedCountry === countryOption && styles.countryButtonActive,
-              ]}
               onPress={() => setSelectedCountry(countryOption)}
+              className={`
+                flex-1 flex-row items-center justify-center p-3 rounded-lg border-2
+                ${selectedCountry === countryOption
+                  ? 'border-primary-500 bg-primary-50'
+                  : 'border-neutral-200 bg-white'}
+              `}
             >
+              <Icon
+                name={countryOption === 'germany' ? 'flag' : countryOption === 'norway' ? 'flag' : 'earth'}
+                size={16}
+                color={selectedCountry === countryOption ? colors.primary[500] : colors.neutral[500]}
+                style={{ marginRight: 4 }}
+              />
               <Text
-                style={[
-                  styles.countryButtonText,
-                  selectedCountry === countryOption && styles.countryButtonTextActive,
-                ]}
+                className={`
+                  text-sm font-semibold capitalize
+                  ${selectedCountry === countryOption ? 'text-primary-500' : 'text-neutral-600'}
+                `}
               >
                 {countryOption === 'all' ? 'All' : countryOption.charAt(0).toUpperCase() + countryOption.slice(1)}
               </Text>
@@ -146,7 +174,29 @@ const AdminOrdersScreen = () => {
         </View>
       </View>
 
-      {filteredOrders.length === 0 ? (
+      {/* Results Count */}
+      <View className="flex-row items-center justify-between mt-3">
+        <Text className="text-sm text-neutral-500">
+          {filteredOrders.length} {filteredOrders.length === 1 ? 'order' : 'orders'} found
+        </Text>
+        {selectedStatus !== 'all' && (
+          <Badge variant="primary" size="sm">
+            {selectedStatus}
+          </Badge>
+        )}
+        {selectedCountry !== 'all' && (
+          <Badge variant="secondary" size="sm">
+            {selectedCountry}
+          </Badge>
+        )}
+      </View>
+    </AnimatedView>
+  );
+
+  if (filteredOrders.length === 0) {
+    return (
+      <View className="flex-1 bg-neutral-50">
+        {renderHeader()}
         <EmptyState
           icon={searchQuery ? "magnify" : "package-variant"}
           title={searchQuery ? "No orders found" : "No orders yet"}
@@ -156,77 +206,35 @@ const AdminOrdersScreen = () => {
               : "Orders will appear here"
           }
         />
-      ) : (
-        <FlatList
-          data={filteredOrders}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
+      </View>
+    );
+  }
+
+  return (
+    <View className="flex-1 bg-neutral-50">
+      <AppHeader title="Manage Orders" />
+
+      <FlatList
+        data={filteredOrders}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={renderHeader}
+        renderItem={({ item, index }) => (
+          <ContentFadeIn delay={index * 50} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
             <OrderCard
               order={item}
               country={item.country}
               onPress={() => handleOrderPress(item.id)}
             />
-          )}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
-          }
-        />
-      )}
+          </ContentFadeIn>
+        )}
+        contentContainerStyle={{ paddingBottom: 16 }}
+        refreshControl={
+          <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
+        }
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  searchBar: {
-    margin: 16,
-    marginBottom: 0,
-  },
-  countryFilter: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  countryFilterLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 8,
-  },
-  countryButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  countryButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fff',
-  },
-  countryButtonActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  countryButtonText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-  countryButtonTextActive: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  listContent: {
-    padding: 16,
-    paddingTop: 8,
-  },
-});
 
 export default AdminOrdersScreen;

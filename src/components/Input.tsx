@@ -1,13 +1,31 @@
-import React from 'react';
-import { TextInput, Text, View, StyleSheet, TextInputProps, ViewStyle } from 'react-native';
+/**
+ * Modern Input Component with Floating Labels
+ * Uses NativeWind for styling and react-native-reanimated for smooth focus animations
+ */
+
+import React, { useState } from 'react';
+import { TextInput, Text, View, TextInputProps, ViewStyle } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  interpolate,
+} from 'react-native-reanimated';
+import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
+import { colors } from '../theme';
+import { ANIMATION_DURATION, EASING } from '../utils/animations';
 
 interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
   containerStyle?: ViewStyle;
-  leftIcon?: React.ReactNode;
-  rightIcon?: React.ReactNode;
+  leftIcon?: string;
+  rightIcon?: string;
+  floatingLabel?: boolean;
 }
+
+const AnimatedText = Animated.createAnimatedComponent(Text);
+const AnimatedView = Animated.createAnimatedComponent(View);
 
 const Input: React.FC<InputProps> = ({
   label,
@@ -15,82 +33,149 @@ const Input: React.FC<InputProps> = ({
   containerStyle,
   leftIcon,
   rightIcon,
+  floatingLabel = false,
+  value,
+  onFocus,
+  onBlur,
   style,
   ...props
 }) => {
+  const [isFocused, setIsFocused] = useState(false);
+  const hasValue = Boolean(value && value.toString().length > 0);
+  const shouldFloat = floatingLabel && (isFocused || hasValue);
+
+  const labelPosition = useSharedValue(hasValue ? 1 : 0);
+  const labelScale = useSharedValue(hasValue ? 0.85 : 1);
+  const borderColor = useSharedValue(error ? 1 : isFocused ? 0.5 : 0);
+
+  React.useEffect(() => {
+    labelPosition.value = withTiming(shouldFloat ? 1 : 0, {
+      duration: ANIMATION_DURATION.normal,
+      easing: EASING.easeOut,
+    });
+    labelScale.value = withTiming(shouldFloat ? 0.85 : 1, {
+      duration: ANIMATION_DURATION.normal,
+      easing: EASING.easeOut,
+    });
+  }, [shouldFloat]);
+
+  React.useEffect(() => {
+    borderColor.value = withTiming(
+      error ? 1 : isFocused ? 0.5 : 0,
+      { duration: ANIMATION_DURATION.fast }
+    );
+  }, [isFocused, error]);
+
+  const handleFocus = (e: any) => {
+    setIsFocused(true);
+    onFocus?.(e);
+  };
+
+  const handleBlur = (e: any) => {
+    setIsFocused(false);
+    onBlur?.(e);
+  };
+
+  const labelAnimatedStyle = useAnimatedStyle(() => {
+    const translateY = interpolate(labelPosition.value, [0, 1], [0, -24]);
+    const translateX = interpolate(labelPosition.value, [0, 1], [0, leftIcon ? -8 : -4]);
+
+    return {
+      transform: [
+        { translateY },
+        { translateX },
+        { scale: labelScale.value },
+      ],
+      opacity: labelPosition.value === 1 ? 1 : 0.6,
+    };
+  });
+
+  const borderAnimatedStyle = useAnimatedStyle(() => {
+    const color = interpolate(
+      borderColor.value,
+      [0, 0.5, 1],
+      [0, 1, 2] // 0: neutral, 1: primary, 2: error
+    );
+
+    let borderColorValue = colors.neutral[300];
+    if (color >= 2) {
+      borderColorValue = colors.error[500];
+    } else if (color >= 1) {
+      borderColorValue = colors.primary[500];
+    }
+
+    return {
+      borderColor: borderColorValue,
+    };
+  });
+
   return (
-    <View style={[styles.container, containerStyle]}>
-      {label && <Text style={styles.label}>{label}</Text>}
-      <View style={styles.inputContainer}>
-        {leftIcon && <View style={styles.leftIcon}>{leftIcon}</View>}
-        <TextInput
-          style={[
-            styles.input,
-            leftIcon ? styles.inputWithLeftIcon : null,
-            rightIcon ? styles.inputWithRightIcon : null,
-            error ? styles.inputError : null,
-            style,
-          ]}
-          placeholderTextColor="#999"
-          {...props}
-        />
-        {rightIcon && <View style={styles.rightIcon}>{rightIcon}</View>}
+    <View style={containerStyle} className="mb-4">
+      <View className="relative">
+        {leftIcon && (
+          <View className="absolute left-4 top-0 bottom-0 justify-center z-10">
+            <Icon name={leftIcon as any} size={20} color={isFocused ? colors.primary[500] : colors.neutral[500]} />
+          </View>
+        )}
+
+        {floatingLabel && label && (
+          <AnimatedText
+            style={labelAnimatedStyle}
+            className={`
+              absolute left-4 z-20
+              ${shouldFloat ? 'text-primary-500' : 'text-neutral-600'}
+              text-sm font-medium
+            `}
+          >
+            {label}
+          </AnimatedText>
+        )}
+
+        {!floatingLabel && label && (
+          <Text className="text-sm font-medium text-neutral-700 mb-2">{label}</Text>
+        )}
+
+        <AnimatedView
+          style={borderAnimatedStyle}
+          className={`
+            flex-row items-center
+            border-2 rounded-lg
+            bg-white
+            ${leftIcon ? 'pl-12' : 'pl-4'}
+            ${rightIcon ? 'pr-12' : 'pr-4'}
+            ${error ? 'border-error-500' : isFocused ? 'border-primary-500' : 'border-neutral-300'}
+          `}
+        >
+          <TextInput
+            className={`
+              flex-1 py-3
+              text-base text-neutral-900
+              ${floatingLabel && shouldFloat ? 'pt-5' : ''}
+            `}
+            placeholder={floatingLabel && shouldFloat ? undefined : label || props.placeholder}
+            placeholderTextColor={colors.neutral[400]}
+            value={value}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            style={style}
+            {...props}
+          />
+
+          {rightIcon && (
+            <View className="ml-2">
+              <Icon name={rightIcon as any} size={20} color={colors.neutral[500]} />
+            </View>
+          )}
+        </AnimatedView>
       </View>
-      {error && <Text style={styles.errorText}>{error}</Text>}
+
+      {error && (
+        <View className="mt-1">
+          <Text className="text-xs text-error-500">{error}</Text>
+        </View>
+      )}
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 8,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: '#000',
-    backgroundColor: '#fff',
-  },
-  inputWithLeftIcon: {
-    paddingLeft: 40,
-  },
-  inputWithRightIcon: {
-    paddingRight: 40,
-  },
-  inputError: {
-    borderColor: '#FF3B30',
-  },
-  leftIcon: {
-    position: 'absolute',
-    left: 12,
-    zIndex: 1,
-  },
-  rightIcon: {
-    position: 'absolute',
-    right: 12,
-    zIndex: 1,
-  },
-  errorText: {
-    fontSize: 12,
-    color: '#FF3B30',
-    marginTop: 4,
-  },
-});
-
 export default Input;
-

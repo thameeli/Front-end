@@ -1,3 +1,7 @@
+// CRITICAL: Import gesture-handler FIRST (before any other imports)
+// This is required for react-native-reanimated to work properly in Expo Go
+import 'react-native-gesture-handler';
+
 console.log('🚀 [index.ts] Starting app registration...');
 import { registerRootComponent } from 'expo';
 console.log('✅ [index.ts] registerRootComponent imported');

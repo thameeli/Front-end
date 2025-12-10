@@ -1,21 +1,30 @@
+/**
+ * Modern Home Screen with Hero Section, Featured Products, and Smooth Scrolling
+ * Uses NativeWind for styling and Phase 2 components
+ */
+
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, Alert, RefreshControl } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Alert, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { CommonActions } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { RootStackParamList } from '../../types';
 import { useAuthStore } from '../../store/authStore';
 import { useProducts } from '../../hooks/useProducts';
 import { useCartStore } from '../../store/cartStore';
-import { ProductCard, SearchBar, FilterBar, EmptyState, LoadingScreen, ErrorMessage, Button, CountrySelectionModal } from '../../components';
+import { ProductCard, SearchBar, FilterBar, EmptyState, LoadingScreen, ErrorMessage, Button, CountrySelectionModal, AnimatedView, SkeletonCard, ContentFadeIn, SkeletonLoader, PromotionalBanner, CategoryIconRow } from '../../components';
 import { getFilteredProducts } from '../../utils/productUtils';
 import { debounce } from '../../utils/debounce';
 import { COUNTRIES, PRODUCT_CATEGORIES } from '../../constants';
 import type { ProductCategory } from '../../types';
 import type { Country } from '../../constants';
-import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
+import { colors } from '../../theme';
 
-type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
+type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'> | BottomTabNavigationProp<any>;
 
 const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
@@ -72,12 +81,16 @@ const HomeScreen = () => {
     });
   }, [products, debouncedSearchQuery, selectedCategory, sortBy, country]);
 
+  // Featured products (first 3)
+  const featuredProducts = useMemo(() => {
+    return filteredProducts.slice(0, 3);
+  }, [filteredProducts]);
+
   const handleProductPress = (productId: string) => {
     navigation.navigate('ProductDetails', { productId });
   };
 
   const handleAddToCart = (product: any) => {
-    // Check if country is selected
     if (!countrySelected && !selectedCountry) {
       Alert.alert(
         t('country.selectCountry') || 'Select Country',
@@ -86,7 +99,6 @@ const HomeScreen = () => {
       return;
     }
 
-    // Check if user is authenticated
     if (!isAuthenticated) {
       Alert.alert(
         t('auth.loginRequired') || 'Login Required',
@@ -107,7 +119,6 @@ const HomeScreen = () => {
       return;
     }
 
-    // Add to cart if authenticated
     addItem(product, 1, country);
   };
 
@@ -116,12 +127,22 @@ const HomeScreen = () => {
   };
 
   if (isLoading) {
-    return <LoadingScreen message={t('products.loading') || 'Loading products...'} />;
+    return (
+      <View className="flex-1 bg-neutral-50">
+        <View className="px-4 pt-4 pb-2 bg-white">
+          <SkeletonLoader width="100%" height={48} borderRadius={12} className="mb-4" />
+          <SkeletonLoader width="60%" height={32} borderRadius={8} />
+        </View>
+        <View className="px-4 pt-4">
+          <SkeletonCard type="product" count={3} />
+        </View>
+      </View>
+    );
   }
 
   if (error) {
     return (
-      <View style={styles.container}>
+      <View className="flex-1 bg-white">
         <ErrorMessage
           message={t('errors.failedToLoadProducts') || 'Failed to load products'}
           onRetry={refetch}
@@ -130,97 +151,185 @@ const HomeScreen = () => {
     );
   }
 
-  return (
-    <View style={styles.container}>
-      {/* Country Selection Modal - Show if country not selected */}
+  const renderHeader = () => (
+    <>
+      {/* Country Selection Modal */}
       <CountrySelectionModal
         visible={!countrySelected && !isAuthenticated}
         selectedCountry={selectedCountry}
         onSelectCountry={handleCountrySelect}
       />
 
-      {/* Header - Different for guests vs authenticated users */}
-      {!isAuthenticated ? (
-        <View style={styles.header}>
-          <Text style={styles.welcomeText}>{t('home.welcome') || 'Welcome to Thamili'}</Text>
-          {selectedCountry && (
-            <Text style={styles.countryText}>
-              {t('country.viewing') || 'Viewing products for'} {selectedCountry === COUNTRIES.GERMANY ? 'Germany' : 'Norway'}
-            </Text>
-          )}
-          <View style={styles.authButtons}>
-            <Button
-              title={t('auth.login') || 'Login'}
-              onPress={() => navigation.navigate('Login')}
-              variant="outline"
-              style={styles.authButton}
-            />
-            <Button
-              title={t('auth.register') || 'Sign Up'}
-              onPress={() => navigation.navigate('Register')}
-              style={styles.authButton}
-            />
-          </View>
-        </View>
-      ) : (
-        <View style={styles.authenticatedHeader}>
-          <View style={styles.userInfo}>
-            <Icon name="account-circle" size={32} color="#007AFF" />
-            <View style={styles.userDetails}>
-              <Text style={styles.userName}>{user?.name || user?.email || 'User'}</Text>
-              <Text style={styles.userRole}>
-                {user?.role === 'admin' ? 'Admin' : 'Customer'} • {country === COUNTRIES.GERMANY ? 'Germany' : 'Norway'}
+      {/* Hero Section */}
+      <AnimatedView animation="fade" delay={0}>
+        <LinearGradient
+          colors={[colors.primary[500], colors.primary[600]]}
+          className="px-6 pt-16 pb-8"
+        >
+          {!isAuthenticated ? (
+            <View className="items-center">
+              <Text className="text-3xl font-bold text-white mb-2 text-center">
+                {t('home.welcome') || 'Welcome to Thamili'}
               </Text>
+              <Text className="text-base text-white/90 text-center mb-6">
+                Fresh fish and vegetables delivered to your door
+              </Text>
+              {selectedCountry && (
+                <View className="bg-white/20 rounded-full px-4 py-2 mb-4">
+                  <Text className="text-sm text-white font-medium">
+                    {t('country.viewing') || 'Viewing products for'} {selectedCountry === COUNTRIES.GERMANY ? 'Germany' : 'Norway'}
+                  </Text>
+                </View>
+              )}
+              <View className="flex-row gap-3 w-full">
+                <Button
+                  title={t('auth.login') || 'Login'}
+                  onPress={() => navigation.navigate('Login')}
+                  variant="outline"
+                  style={{ flex: 1, backgroundColor: 'white' }}
+                  textStyle={{ color: colors.primary[500] }}
+                />
+                <Button
+                  title={t('auth.register') || 'Sign Up'}
+                  onPress={() => navigation.navigate('Register')}
+                  style={{ flex: 1, backgroundColor: 'white' }}
+                  textStyle={{ color: colors.primary[500] }}
+                />
+              </View>
             </View>
-          </View>
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={() => {
-                // Navigate to Profile tab
-                const tabNavigation = navigation.getParent();
-                if (tabNavigation) {
-                  tabNavigation.navigate('Profile');
-                } else {
-                  navigation.navigate('Profile' as never);
-                }
-              }}
-            >
-              <Icon name="account" size={24} color="#007AFF" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={async () => {
-                Alert.alert(
-                  t('auth.logout') || 'Logout',
-                  t('auth.logoutConfirm') || 'Are you sure you want to logout?',
-                  [
-                    { text: t('common.cancel') || 'Cancel', style: 'cancel' },
-                    {
-                      text: t('auth.logout') || 'Logout',
-                      style: 'destructive',
-                      onPress: async () => {
-                        const { logout } = useAuthStore.getState();
-                        await logout();
-                      },
-                    },
-                  ]
-                );
-              }}
-            >
-              <Icon name="logout" size={24} color="#FF3B30" />
-            </TouchableOpacity>
-          </View>
-        </View>
+          ) : (
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center flex-1">
+                <View className="w-12 h-12 rounded-full bg-white/20 justify-center items-center mr-3">
+                  <Icon name="account-circle" size={28} color="white" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-lg font-bold text-white" numberOfLines={1}>
+                    {user?.name || user?.email || 'User'}
+                  </Text>
+                  <Text className="text-sm text-white/80">
+                    {user?.role === 'admin' ? 'Admin' : 'Customer'} • {country === COUNTRIES.GERMANY ? 'Germany' : 'Norway'}
+                  </Text>
+                </View>
+              </View>
+              <View className="flex-row gap-2">
+                <TouchableOpacity
+                  onPress={() => {
+                    const tabNavigator = navigation.getParent();
+                    if (tabNavigator) {
+                      tabNavigator.navigate('Profile');
+                    } else {
+                      navigation.dispatch(CommonActions.navigate({ name: 'Profile' }));
+                    }
+                  }}
+                  className="w-10 h-10 rounded-full bg-white/20 justify-center items-center"
+                >
+                  <Icon name="account" size={20} color="white" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={async () => {
+                    Alert.alert(
+                      t('auth.logout') || 'Logout',
+                      t('auth.logoutConfirm') || 'Are you sure you want to logout?',
+                      [
+                        { text: t('common.cancel') || 'Cancel', style: 'cancel' },
+                        {
+                          text: t('auth.logout') || 'Logout',
+                          style: 'destructive',
+                          onPress: async () => {
+                            const { logout } = useAuthStore.getState();
+                            await logout();
+                          },
+                        },
+                      ]
+                    );
+                  }}
+                  className="w-10 h-10 rounded-full bg-white/20 justify-center items-center"
+                >
+                  <Icon name="logout" size={20} color="white" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </LinearGradient>
+      </AnimatedView>
+
+      {/* Promotional Banner */}
+      {!searchQuery && selectedCategory === 'all' && (
+        <AnimatedView animation="fade" delay={50}>
+          <PromotionalBanner
+            title="UP TO 100% FREE DELIVERY"
+            subtitle="Minimum Order Value €50"
+            offerText="Free Shipping on orders above €50"
+            validUntil="31 DEC 2024"
+            onCollect={() => {
+              Alert.alert('Voucher Collected', 'Free delivery voucher has been added to your account!');
+            }}
+            variant="success"
+          />
+        </AnimatedView>
+      )}
+
+      {/* Category Icons Row */}
+      {!searchQuery && selectedCategory === 'all' && (
+        <AnimatedView animation="slide" delay={100} enterFrom="bottom">
+          <CategoryIconRow
+            categories={[
+              {
+                id: 'all',
+                name: 'All',
+                icon: 'view-grid',
+                category: 'all',
+              },
+              {
+                id: 'fresh',
+                name: 'Fresh',
+                icon: 'fish',
+                category: 'fresh',
+                badge: '20% OFF',
+              },
+              {
+                id: 'frozen',
+                name: 'Frozen',
+                icon: 'snowflake',
+                category: 'frozen',
+              },
+              {
+                id: 'delivery',
+                name: 'Free Delivery',
+                icon: 'truck-delivery',
+              },
+              {
+                id: 'special',
+                name: 'Special Offers',
+                icon: 'tag',
+                badge: 'NEW',
+              },
+            ]}
+            onCategoryPress={(category) => {
+              if (category.category) {
+                setSelectedCategory(category.category as ProductCategory | 'all');
+              }
+            }}
+            selectedCategory={selectedCategory}
+          />
+        </AnimatedView>
       )}
 
       {/* Search and Filters */}
-      <View style={styles.searchSection}>
+      <AnimatedView animation="slide" delay={150} enterFrom="bottom" className="px-4 pt-4 pb-2 bg-white">
         <SearchBar
           value={searchQuery}
           onChangeText={handleSearchChange}
           onClear={handleClearSearch}
           placeholder={t('products.searchPlaceholder') || 'Search products...'}
+          style={{ marginBottom: 12 }}
+          onSearchPress={() => {
+            // Handle search action
+            if (searchQuery.trim()) {
+              setDebouncedSearchQuery(searchQuery);
+            }
+          }}
         />
         <FilterBar
           selectedCategory={selectedCategory}
@@ -228,134 +337,93 @@ const HomeScreen = () => {
           sortBy={sortBy}
           onSortChange={setSortBy}
         />
-      </View>
+      </AnimatedView>
 
-      {/* Products List - Only show if country is selected */}
+      {/* Featured Products Section */}
+      {featuredProducts.length > 0 && !searchQuery && selectedCategory === 'all' && (
+        <AnimatedView animation="fade" delay={200} className="px-4 pt-6 pb-2">
+          <View className="flex-row items-center justify-between mb-4">
+            <Text className="text-xl font-bold text-neutral-900">Featured Products</Text>
+            <Icon name="star" size={20} color={colors.warning[500]} />
+          </View>
+          <FlatList
+            horizontal
+            data={featuredProducts}
+            keyExtractor={(item) => `featured-${item.id}`}
+            renderItem={({ item, index }) => (
+              <AnimatedView animation="slide" delay={300 + index * 50} enterFrom="right" style={{ marginRight: 12 }}>
+                <ProductCard
+                  product={item}
+                  country={country}
+                  onPress={() => handleProductPress(item.id)}
+                  onAddToCart={() => handleAddToCart(item)}
+                  index={index}
+                />
+              </AnimatedView>
+            )}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingRight: 16 }}
+          />
+        </AnimatedView>
+      )}
+
+      {/* All Products Header */}
+      <View className="px-4 pt-4 pb-2">
+        <Text className="text-xl font-bold text-neutral-900">
+          {searchQuery ? 'Search Results' : selectedCategory !== 'all' ? `${selectedCategory} Products` : 'All Products'}
+        </Text>
+        <Text className="text-sm text-neutral-500 mt-1">
+          {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'} found
+        </Text>
+      </View>
+    </>
+  );
+
+  return (
+    <View className="flex-1 bg-neutral-50">
       {(!countrySelected && !isAuthenticated) ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>
-            {t('country.selectCountryToView') || 'Please select your country to view products'}
-          </Text>
+        <View className="flex-1 justify-center items-center px-8">
+          <EmptyState
+            icon="map-marker-off"
+            title={t('country.selectCountry') || 'Select Country'}
+            message={t('country.selectCountryToView') || 'Please select your country to view products'}
+          />
         </View>
       ) : filteredProducts.length === 0 ? (
-        <EmptyState
-          message={t('products.noProductsFound') || 'No products found'}
-          icon="store-off"
-        />
+        <View className="flex-1">
+          {renderHeader()}
+          <EmptyState
+            icon="store-off"
+            title={t('products.noProductsFound') || 'No products found'}
+            message="Try adjusting your search or filters"
+          />
+        </View>
       ) : (
         <FlatList
           data={filteredProducts}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <ProductCard
-              product={item}
-              country={country}
-              onPress={() => handleProductPress(item.id)}
-              onAddToCart={() => handleAddToCart(item)}
-            />
+          numColumns={2}
+          renderItem={({ item, index }) => (
+            <ContentFadeIn delay={index * 50} style={{ flex: 1, margin: 8 }}>
+              <ProductCard
+                product={item}
+                country={country}
+                onPress={() => handleProductPress(item.id)}
+                onAddToCart={() => handleAddToCart(item)}
+                index={index}
+              />
+            </ContentFadeIn>
           )}
-          contentContainerStyle={styles.listContent}
+          ListHeaderComponent={renderHeader}
+          contentContainerStyle={{ paddingBottom: 16 }}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
           }
+          showsVerticalScrollIndicator={false}
         />
       )}
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    padding: 20,
-    backgroundColor: '#f5f5f5',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  authenticatedHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  userDetails: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  userName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  userRole: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  headerButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: '#f5f5f5',
-  },
-  welcomeText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  countryText: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  authButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  authButton: {
-    flex: 1,
-  },
-  searchSection: {
-    padding: 16,
-    backgroundColor: '#fff',
-  },
-  listContent: {
-    padding: 16,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-  },
-});
 
 export default HomeScreen;
