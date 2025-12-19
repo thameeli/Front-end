@@ -10,13 +10,18 @@ import { createStackNavigator, TransitionPresets } from '@react-navigation/stack
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useAuthStore } from '../store/authStore';
+import { useCartStore } from '../store/cartStore';
 import { RootStackParamList } from '../types';
 import { LoadingScreen, CartBadge, CustomTabBar } from '../components';
 import { colors } from '../theme';
+import { PAGE_TRANSITIONS } from '../utils/animations';
 
 // Screens
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
+import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
+import WelcomeScreen from '../screens/onboarding/WelcomeScreen';
+import CountrySelectionScreen from '../screens/onboarding/CountrySelectionScreen';
 import HomeScreen from '../screens/customer/HomeScreen';
 import ProductsScreen from '../screens/customer/ProductsScreen';
 import ProductDetailsScreen from '../screens/customer/ProductDetailsScreen';
@@ -60,6 +65,19 @@ const screenOptions = {
       },
     },
   },
+};
+
+// Custom screen options for specific screens
+const modalScreenOptions = {
+  ...screenOptions,
+  ...PAGE_TRANSITIONS.slideFromBottom,
+  gestureEnabled: true,
+  gestureDirection: 'vertical' as const,
+};
+
+const detailScreenOptions = {
+  ...screenOptions,
+  ...PAGE_TRANSITIONS.fade,
 };
 
 // Guest Tab Navigator (for unauthenticated users)
@@ -313,44 +331,65 @@ const AdminTabs = () => {
 
 // Main App Navigator
 const AppNavigator = () => {
-  const { isAuthenticated, user, isLoading, loadSession } = useAuthStore();
+  const { isAuthenticated, user, isLoading, loadSession, hasCompletedOnboarding, checkOnboardingStatus } = useAuthStore();
+  const { countrySelected, selectedCountry, loadCountry } = useCartStore();
   const navigationRef = useRef<any>(null);
 
   useEffect(() => {
     loadSession();
+    checkOnboardingStatus();
+    loadCountry(); // Load country preference on app start
   }, []);
 
-  // Navigate when authentication state changes
-  useEffect(() => {
-    if (!isLoading && navigationRef.current) {
-      const timer = setTimeout(() => {
-        if (navigationRef.current) {
-          try {
-            navigationRef.current.reset({
-              index: 0,
-              routes: [{ name: 'Main' }],
-            });
-            console.log('🔄 Navigation reset:', {
-              isAuthenticated,
-              role: user?.role,
-              navigatorKey: isAuthenticated
-                ? user?.role === 'admin'
-                  ? 'admin'
-                  : 'customer'
-                : 'guest',
-            });
-          } catch (error) {
-            console.error('❌ Navigation reset error:', error);
-          }
-        }
-      }, 100);
-
-      return () => clearTimeout(timer);
-    }
-  }, [isAuthenticated, user, isLoading]);
+  // Note: We don't need to manually reset navigation here
+  // React Navigation automatically handles navigation state changes
+  // when the navigator structure changes (via the key prop on Stack.Navigator)
 
   if (isLoading) {
     return <LoadingScreen message="Loading..." />;
+  }
+
+  // Check if country is selected (required for all users)
+  // Use user's country preference if authenticated, otherwise use cart store
+  const hasCountrySelected = isAuthenticated && user?.country_preference
+    ? true
+    : countrySelected;
+
+  // Show country selection screen first if no country is selected
+  // This is required before accessing any tabs
+  if (!hasCountrySelected) {
+    return (
+      <NavigationContainer ref={navigationRef}>
+        <Stack.Navigator screenOptions={screenOptions}>
+          <Stack.Screen 
+            name="CountrySelection" 
+            component={CountrySelectionScreen}
+            options={{ gestureEnabled: false }} // Prevent going back
+          />
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+          <Stack.Screen name="Welcome" component={WelcomeScreen} />
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Register" component={RegisterScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    );
+  }
+
+  // Show onboarding for first-time users (only if country is already selected)
+  if (!hasCompletedOnboarding && !isAuthenticated) {
+    return (
+      <NavigationContainer ref={navigationRef}>
+        <Stack.Navigator screenOptions={screenOptions}>
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+          <Stack.Screen name="Welcome" component={WelcomeScreen} />
+          <Stack.Screen name="CountrySelection" component={CountrySelectionScreen} />
+          <Stack.Screen name="Main" component={GuestTabs} />
+          <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Register" component={RegisterScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    );
   }
 
   // Use a key to force re-render when auth state changes
@@ -376,8 +415,16 @@ const AppNavigator = () => {
             <Stack.Screen name="Settings" component={AdminSettingsScreen} />
             <Stack.Screen name="EditProfile" component={EditProfileScreen} />
             <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
-            <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
-            <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} />
+            <Stack.Screen 
+              name="ProductDetails" 
+              component={ProductDetailsScreen}
+              options={detailScreenOptions}
+            />
+            <Stack.Screen 
+              name="OrderDetails" 
+              component={OrderDetailsScreen}
+              options={detailScreenOptions}
+            />
             <Stack.Screen name="AddProduct" component={AddProductScreen} />
             <Stack.Screen name="EditProduct" component={EditProductScreen} />
             <Stack.Screen name="AddPickupPoint" component={AddPickupPointScreen} />
@@ -386,9 +433,21 @@ const AppNavigator = () => {
         ) : (
           <>
             <Stack.Screen name="Main" component={CustomerTabs} />
-            <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
-            <Stack.Screen name="Checkout" component={CheckoutScreen} />
-            <Stack.Screen name="OrderConfirmation" component={OrderConfirmationScreen} />
+            <Stack.Screen 
+              name="ProductDetails" 
+              component={ProductDetailsScreen}
+              options={detailScreenOptions}
+            />
+            <Stack.Screen 
+              name="Checkout" 
+              component={CheckoutScreen}
+              options={modalScreenOptions}
+            />
+            <Stack.Screen 
+              name="OrderConfirmation" 
+              component={OrderConfirmationScreen}
+              options={detailScreenOptions}
+            />
             <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} />
             <Stack.Screen name="EditProfile" component={EditProfileScreen} />
             <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />

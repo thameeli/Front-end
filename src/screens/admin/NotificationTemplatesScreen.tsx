@@ -46,7 +46,7 @@ const NotificationTemplatesScreen = () => {
         <AppHeader title="Notification Templates" />
         <ErrorMessage
           message="Failed to load templates. Please try again."
-          onRetry={() => refetch()}
+          onRetry={async () => { await refetch(); }}
         />
       </View>
     );

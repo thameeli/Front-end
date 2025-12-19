@@ -12,7 +12,7 @@ import Animated, {
   withTiming,
   withSpring,
 } from 'react-native-reanimated';
-import { SkeletonLoader } from './SkeletonLoader';
+import SkeletonLoader from './SkeletonLoader';
 import { colors } from '../theme';
 import { EASING, ANIMATION_DURATION } from '../utils/animations';
 

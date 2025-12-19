@@ -47,37 +47,58 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
   const canIncrement = !disabled && (!max || value < max);
 
   return (
-    <View style={[styles.container, style]}>
+    <View 
+      style={[styles.container, style]}
+      accessibilityRole="adjustable"
+      accessibilityLabel={`Quantity selector, current value: ${value}`}
+      accessibilityValue={{ text: value.toString() }}
+    >
       <TouchableOpacity
-        style={[styles.button, !canDecrement && styles.buttonDisabled]}
+        style={[styles.button, !canDecrement && styles.buttonDisabled, { minWidth: 44, minHeight: 44 }]} // WCAG minimum touch target
         onPress={handleDecrement}
         disabled={!canDecrement}
+        accessibilityRole="button"
+        accessibilityLabel="Decrease quantity"
+        accessibilityHint="Double tap to decrease quantity by one"
+        accessibilityState={{ disabled: !canDecrement }}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
         <Icon
           name="minus"
           size={20}
           color={canDecrement ? '#007AFF' : '#ccc'}
+          accessibilityElementsHidden
         />
       </TouchableOpacity>
 
       <TextInput
-        style={[styles.input, disabled && styles.inputDisabled]}
+        style={[styles.input, disabled && styles.inputDisabled, { minHeight: 44 }]}
         value={value.toString()}
         onChangeText={handleTextChange}
         keyboardType="number-pad"
         editable={!disabled}
         selectTextOnFocus
+        accessibilityRole="adjustable"
+        accessibilityLabel="Quantity input"
+        accessibilityHint="Enter quantity or use buttons to adjust"
+        accessibilityValue={{ text: value.toString() }}
       />
 
       <TouchableOpacity
-        style={[styles.button, !canIncrement && styles.buttonDisabled]}
+        style={[styles.button, !canIncrement && styles.buttonDisabled, { minWidth: 44, minHeight: 44 }]} // WCAG minimum touch target
         onPress={handleIncrement}
         disabled={!canIncrement}
+        accessibilityRole="button"
+        accessibilityLabel="Increase quantity"
+        accessibilityHint="Double tap to increase quantity by one"
+        accessibilityState={{ disabled: !canIncrement }}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
         <Icon
           name="plus"
           size={20}
           color={canIncrement ? '#007AFF' : '#ccc'}
+          accessibilityElementsHidden
         />
       </TouchableOpacity>
     </View>
@@ -94,8 +115,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   button: {
-    width: 40,
-    height: 40,
+    minWidth: 44, // WCAG minimum touch target
+    minHeight: 44,
+    width: 44,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f5f5f5',
@@ -105,7 +128,8 @@ const styles = StyleSheet.create({
   },
   input: {
     width: 60,
-    height: 40,
+    minHeight: 44, // WCAG minimum touch target
+    height: 44,
     textAlign: 'center',
     fontSize: 16,
     fontWeight: '600',

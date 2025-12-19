@@ -15,6 +15,7 @@ import { productService } from '../../services/productService';
 import { AppHeader, StatisticsCard, OrderCard, LoadingScreen, ErrorMessage, AnimatedView, Card, SkeletonCard, ContentFadeIn } from '../../components';
 import { useOrderRealtime } from '../../hooks/useOrderRealtime';
 import { formatPrice } from '../../utils/productUtils';
+import { formatDate } from '../../utils/regionalFormatting';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
 import type { Order } from '../../types';
@@ -208,7 +209,7 @@ const AdminDashboardScreen = () => {
 
             {recentOrders.length === 0 ? (
               <Card elevation="flat" className="p-8 items-center">
-                <Icon name="package-variant-off" size={48} color={colors.neutral[400]} />
+                <Icon name={"package-variant-off" as any} size={48} color={colors.neutral[400]} />
                 <Text className="text-base text-neutral-500 mt-4 text-center">
                   No recent orders
                 </Text>
@@ -239,8 +240,11 @@ const AdminDashboardScreen = () => {
                         </Text>
                       </View>
                       <View className="flex-row items-center justify-between">
-                        <Text className="text-sm text-neutral-500">
-                          {new Date(order.created_at).toLocaleDateString()}
+                        <Text 
+                          className="text-sm text-neutral-500"
+                          accessibilityLabel={`Order date: ${formatDate(order.created_at, country)}`}
+                        >
+                          {formatDate(order.created_at, country)}
                         </Text>
                         <View
                           className={`px-2 py-1 rounded-full ${

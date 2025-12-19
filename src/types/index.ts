@@ -28,6 +28,8 @@ export interface Product {
   image_url?: string;
   active: boolean;
   created_at: string;
+  rating?: number; // Average rating (0-5)
+  review_count?: number; // Number of reviews
 }
 
 // Order Types
@@ -109,6 +111,9 @@ export type RootStackParamList = {
   NotificationSettings: undefined;
   NotificationHistory: undefined;
   NotificationTemplates: undefined;
+  Onboarding: undefined;
+  Welcome: undefined;
+  CountrySelection: undefined;
 };
 
 // Re-export notification types

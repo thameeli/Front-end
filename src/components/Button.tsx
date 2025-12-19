@@ -28,6 +28,7 @@ try {
 
 import { colors } from '../theme';
 import { ANIMATION_DURATION, EASING } from '../utils/animations';
+import { mediumHaptic } from '../utils/hapticFeedback';
 
 interface ButtonProps {
   title: string;
@@ -38,8 +39,11 @@ interface ButtonProps {
   style?: ViewStyle;
   textStyle?: TextStyle;
   fullWidth?: boolean;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   icon?: React.ReactNode;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
+  accessibilityRole?: 'button' | 'link' | 'none';
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -53,6 +57,9 @@ const Button: React.FC<ButtonProps> = ({
   fullWidth = false,
   size = 'md',
   icon,
+  accessibilityLabel,
+  accessibilityHint,
+  accessibilityRole = 'button',
 }) => {
   // Check if reanimated is available
   const hasReanimated = Boolean(Animated && useAnimatedStyle && useSharedValue);
@@ -88,6 +95,20 @@ const Button: React.FC<ButtonProps> = ({
       rippleScale.value = withTiming(0, { duration: 200 });
     } else {
       setPressed(false);
+    }
+  };
+
+  const handlePress = (e?: any) => {
+    // Stop event propagation to prevent triggering parent interactive elements (especially on web)
+    if (e && typeof e.stopPropagation === 'function') {
+      e.stopPropagation();
+    }
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
+    if (!disabled && !loading) {
+      mediumHaptic();
+      onPress();
     }
   };
 
@@ -154,11 +175,13 @@ const Button: React.FC<ButtonProps> = ({
   const getSizeClasses = () => {
     switch (size) {
       case 'sm':
-        return 'px-4 py-2 min-h-[36px]';
+        return 'px-4 py-2 min-h-[44px]'; // WCAG minimum touch target
       case 'md':
         return 'px-6 py-3 min-h-[48px]';
       case 'lg':
         return 'px-8 py-4 min-h-[56px]';
+      case 'xl':
+        return 'px-10 py-5 min-h-[64px]';
       default:
         return 'px-6 py-3 min-h-[48px]';
     }
@@ -167,11 +190,13 @@ const Button: React.FC<ButtonProps> = ({
   const getTextSize = () => {
     switch (size) {
       case 'sm':
-        return 'text-sm';
+        return 'text-sm'; // 14px - minimum WCAG requirement
       case 'md':
-        return 'text-base';
+        return 'text-base'; // 16px
       case 'lg':
-        return 'text-lg';
+        return 'text-lg'; // 18px
+      case 'xl':
+        return 'text-xl'; // 20px
       default:
         return 'text-base';
     }
@@ -186,7 +211,7 @@ const Button: React.FC<ButtonProps> = ({
 
   return (
     <Pressable
-      onPress={onPress}
+      onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       disabled={disabled || loading}
@@ -195,6 +220,11 @@ const Button: React.FC<ButtonProps> = ({
         ${getVariantClasses()}
         ${getSizeClasses()}
       `}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel || title}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled: disabled || loading }}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} // Extra touch area
     >
       {/* Ripple Effect */}
       {hasReanimated && Animated && Animated.View ? (

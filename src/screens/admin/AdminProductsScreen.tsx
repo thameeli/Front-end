@@ -3,7 +3,7 @@
  * Uses NativeWind for styling and Phase 2 components
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Alert, StyleSheet, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -72,6 +72,20 @@ const AdminProductsScreen = () => {
     queryKey: ['products', 'all'],
     queryFn: () => productService.getProducts(),
   });
+  
+  if (error) {
+    return (
+      <View className="flex-1 bg-neutral-50">
+        <AppHeader title="Manage Products" />
+        <ErrorMessage
+          message="Failed to load products. Please try again."
+          error={error}
+          onRetry={async () => { await refetch(); }}
+          retryWithBackoff={true}
+        />
+      </View>
+    );
+  }
 
   // Delete product mutation
   const deleteMutation = useMutation({
@@ -108,14 +122,14 @@ const AdminProductsScreen = () => {
   }, [products, selectedCategory, debouncedSearchQuery, country]);
 
   const handleAddProduct = () => {
-    navigation.navigate('AddProduct' as never);
+    (navigation as any).navigate('AddProduct');
   };
 
-  const handleEditProduct = (productId: string) => {
-    navigation.navigate('EditProduct' as never, { productId } as never);
-  };
+  const handleEditProduct = useCallback((productId: string) => {
+    (navigation as any).navigate('EditProduct', { productId });
+  }, [navigation]);
 
-  const handleDeleteProduct = (product: Product) => {
+  const handleDeleteProduct = useCallback((product: Product) => {
     Alert.alert(
       'Delete Product',
       `Are you sure you want to delete "${product.name}"?`,
@@ -128,14 +142,66 @@ const AdminProductsScreen = () => {
         },
       ]
     );
-  };
+  }, [deleteMutation]);
 
-  const handleToggleActive = (product: Product) => {
+  const handleToggleActive = useCallback((product: Product) => {
     toggleActiveMutation.mutate({
       productId: product.id,
       active: !product.active,
     });
-  };
+  }, [toggleActiveMutation]);
+
+  // Memoized render item
+  const renderProductItem = useCallback(({ item, index }: { item: Product; index: number }) => (
+    <AnimatedView animation="fade" delay={index * 50} className="px-4 mb-4">
+      <Card elevation="flat" className="p-4">
+        <View className="flex-row items-center justify-between mb-3">
+          <View className="flex-1">
+            <Text className="text-lg font-semibold text-neutral-900 mb-1">{item.name}</Text>
+            <Text className="text-sm text-neutral-500">{item.category}</Text>
+          </View>
+          <View className="flex-row gap-2">
+            <TouchableOpacity
+              onPress={() => handleEditProduct(item.id)}
+              className="p-2 bg-primary-50 rounded-lg"
+              accessibilityRole="button"
+              accessibilityLabel="Edit product"
+            >
+              <Icon name="pencil" size={18} color={colors.primary[500]} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => handleDeleteProduct(item)}
+              className="p-2 bg-error-50 rounded-lg"
+              accessibilityRole="button"
+              accessibilityLabel="Delete product"
+            >
+              <Icon name="delete" size={18} color={colors.error[500]} />
+            </TouchableOpacity>
+          </View>
+        </View>
+        <View className="flex-row items-center justify-between">
+          <Text className="text-base font-bold text-primary-500">
+            {country === COUNTRIES.GERMANY 
+              ? `€${item.price_germany.toFixed(2)}` 
+              : `kr${item.price_norway.toFixed(2)}`}
+          </Text>
+          <TouchableOpacity
+            onPress={() => handleToggleActive(item)}
+            className={`px-3 py-1 rounded ${item.active ? 'bg-success-100' : 'bg-neutral-100'}`}
+            accessibilityRole="button"
+            accessibilityLabel={item.active ? 'Deactivate product' : 'Activate product'}
+          >
+            <Text className={`text-xs font-semibold ${item.active ? 'text-success-600' : 'text-neutral-600'}`}>
+              {item.active ? 'Active' : 'Inactive'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </Card>
+    </AnimatedView>
+  ), [handleEditProduct, handleDeleteProduct, handleToggleActive, country]);
+
+  // Memoized key extractor
+  const keyExtractor = useCallback((item: Product) => item.id, []);
 
   if (isLoading) {
     return (
@@ -144,18 +210,6 @@ const AdminProductsScreen = () => {
         <View className="px-4 pt-4">
           <SkeletonCard type="product" count={3} />
         </View>
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View className="flex-1 bg-neutral-50">
-        <AppHeader title="Manage Products" />
-        <ErrorMessage
-          message="Failed to load products. Please try again."
-          onRetry={() => refetch()}
-        />
       </View>
     );
   }
@@ -225,67 +279,21 @@ const AdminProductsScreen = () => {
       
       <FlatList
         data={filteredProducts}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         ListHeaderComponent={renderHeader}
-        renderItem={({ item, index }) => (
-          <ContentFadeIn delay={index * 50} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
-            <Card elevation="card" className="overflow-hidden">
-              <ProductCard
-                product={item}
-                country={country}
-                onPress={() => handleEditProduct(item.id)}
-                index={index}
-              />
-              
-              {/* Admin Actions */}
-              <View className="flex-row gap-2 p-4 bg-neutral-50 border-t border-neutral-200">
-                <TouchableOpacity
-                  onPress={() => handleToggleActive(item)}
-                  className={`
-                    flex-1 flex-row items-center justify-center p-3 rounded-lg border-2
-                    ${item.active ? 'border-neutral-300 bg-white' : 'border-success-500 bg-success-50'}
-                  `}
-                >
-                  <Icon
-                    name={item.active ? 'eye-off' : 'eye'}
-                    size={18}
-                    color={item.active ? colors.neutral[500] : colors.success[500]}
-                  />
-                  <Text
-                    className={`
-                      text-sm font-semibold ml-2
-                      ${item.active ? 'text-neutral-600' : 'text-success-500'}
-                    `}
-                  >
-                    {item.active ? 'Deactivate' : 'Activate'}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => handleEditProduct(item.id)}
-                  className="flex-1 flex-row items-center justify-center p-3 rounded-lg border-2 border-primary-500 bg-primary-50"
-                >
-                  <Icon name="pencil" size={18} color={colors.primary[500]} />
-                  <Text className="text-sm font-semibold text-primary-500 ml-2">
-                    Edit
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => handleDeleteProduct(item)}
-                  className="flex-1 flex-row items-center justify-center p-3 rounded-lg border-2 border-error-500 bg-error-50"
-                >
-                  <Icon name="delete" size={18} color={colors.error[500]} />
-                  <Text className="text-sm font-semibold text-error-500 ml-2">
-                    Delete
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </Card>
-          </ContentFadeIn>
-        )}
+        renderItem={renderProductItem}
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+        initialNumToRender={10}
+        windowSize={10}
+        getItemLayout={(data, index) => ({
+          length: 350, // Approximate item height with admin actions
+          offset: 350 * index,
+          index,
+        })}
       />
 
       {/* Sticky Add Button - Positioned above tab bar */}
@@ -293,10 +301,7 @@ const AdminProductsScreen = () => {
         animation="slide"
         delay={0}
         enterFrom="bottom"
-        style={[
-          styles.stickyContainer,
-          { bottom: totalTabBarHeight }
-        ]}
+        style={[styles.stickyContainer, { bottom: totalTabBarHeight }] as any}
       >
         <Button
           title="Add New Product"

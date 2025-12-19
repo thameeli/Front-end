@@ -76,10 +76,10 @@ INSERT INTO pickup_points (name, address, latitude, longitude, country, delivery
 -- ============================================
 -- NOTES:
 -- ============================================
--- 1. Admin User: You need to create an admin user manually:
---    - Sign up via the app or Supabase Auth
---    - Then run this SQL to make them admin:
---      UPDATE users SET role = 'admin' WHERE email = 'admin@example.com';
+-- 1. Admin & Delivery Partners: See seed_admin_users.sql
+--    - Create users in Supabase Auth first
+--    - Then run seed_admin_users.sql to assign roles
+--    - Default: 1 admin, 2 delivery partners
 --
 -- 2. Prices: 
 --    - Germany prices are in EUR

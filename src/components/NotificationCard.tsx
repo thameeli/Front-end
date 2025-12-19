@@ -2,19 +2,24 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { Notification, NotificationType } from '../types/notifications';
+import { formatDate, formatDateTime } from '../utils/regionalFormatting';
+import { COUNTRIES } from '../constants';
+import type { Country } from '../constants';
 
 interface NotificationCardProps {
   notification: Notification;
   onPress?: () => void;
   onMarkAsRead?: () => void;
+  country?: Country;
 }
 
 const NotificationCard: React.FC<NotificationCardProps> = ({
   notification,
   onPress,
   onMarkAsRead,
+  country = COUNTRIES.GERMANY,
 }) => {
-  const getNotificationIcon = (type: NotificationType): string => {
+  const getNotificationIcon = (type: NotificationType): any => {
     switch (type) {
       case 'order_confirmed':
         return 'check-circle';
@@ -56,38 +61,62 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
     if (days < 7) return `${days}d ago`;
-    return date.toLocaleDateString();
+    return formatDate(dateString, country);
   };
 
   const icon = getNotificationIcon(notification.type);
   const color = getNotificationColor(notification.type);
 
+  const accessibilityLabel = `${notification.title}. ${notification.message}. ${formatTime(notification.created_at)}`;
+
   return (
     <TouchableOpacity
-      style={[styles.container, !notification.read && styles.unread]}
+      style={[styles.container, !notification.read && styles.unread, { minHeight: 44 }]} // WCAG minimum touch target
       onPress={onPress}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={onPress ? "Double tap to view notification details" : undefined}
+      accessibilityState={{ selected: !notification.read }}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     >
-      <View style={[styles.iconContainer, { backgroundColor: `${color}20` }]}>
+      <View style={[styles.iconContainer, { backgroundColor: `${color}20` }]} accessibilityElementsHidden>
         <Icon name={icon} size={24} color={color} />
       </View>
-      <View style={styles.content}>
+      <View style={styles.content} accessibilityRole="text">
         <View style={styles.header}>
-          <Text style={styles.title}>{notification.title}</Text>
-          {!notification.read && <View style={styles.unreadDot} />}
+          <Text 
+            style={styles.title}
+            accessibilityRole="header"
+          >
+            {notification.title}
+          </Text>
+          {!notification.read && <View style={styles.unreadDot} accessibilityElementsHidden />}
         </View>
-        <Text style={styles.message} numberOfLines={2}>
+        <Text 
+          style={styles.message} 
+          numberOfLines={2}
+          accessibilityLabel={notification.message}
+        >
           {notification.message}
         </Text>
-        <Text style={styles.time}>{formatTime(notification.created_at)}</Text>
+        <Text 
+          style={styles.time}
+          accessibilityLabel={`Time: ${formatTime(notification.created_at)}`}
+        >
+          {formatTime(notification.created_at)}
+        </Text>
       </View>
       {!notification.read && onMarkAsRead && (
         <TouchableOpacity
-          style={styles.markReadButton}
+          style={[styles.markReadButton, { minHeight: 44, minWidth: 44 }]}
           onPress={onMarkAsRead}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Mark as read"
+          accessibilityHint="Double tap to mark this notification as read"
         >
-          <Icon name="check" size={20} color="#007AFF" />
+          <Icon name="check" size={20} color="#007AFF" accessibilityElementsHidden />
         </TouchableOpacity>
       )}
     </TouchableOpacity>
@@ -153,8 +182,24 @@ const styles = StyleSheet.create({
   markReadButton: {
     padding: 4,
     marginLeft: 8,
+    minHeight: 44, // WCAG minimum touch target
+    minWidth: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 
-export default NotificationCard;
+// Custom comparison for memoization
+const areEqual = (prevProps: NotificationCardProps, nextProps: NotificationCardProps) => {
+  return (
+    prevProps.notification.id === nextProps.notification.id &&
+    prevProps.notification.read === nextProps.notification.read &&
+    prevProps.country === nextProps.country
+  );
+};
+
+const MemoizedNotificationCard = React.memo(NotificationCard, areEqual);
+MemoizedNotificationCard.displayName = 'NotificationCard';
+
+export default MemoizedNotificationCard;
 

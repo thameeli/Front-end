@@ -9,7 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
-import { RootStackParamList, UserRole } from '../../types';
+import { RootStackParamList } from '../../types';
 import { useAuthStore } from '../../store/authStore';
 import { Button, Input, ErrorMessage, AnimatedView, Badge } from '../../components';
 import { registerSchema, validateForm } from '../../utils/validation';
@@ -26,7 +26,6 @@ const RegisterScreen = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<UserRole>('customer');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [apiError, setApiError] = useState<string>('');
 
@@ -47,7 +46,8 @@ const RegisterScreen = () => {
       return;
     }
 
-    const result = await register(email, password, name, phone || undefined, role);
+    // Always register as customer - admin must be created via seed data
+    const result = await register(email, password, name, phone || undefined, 'customer');
     if (!result.success) {
       setApiError(result.error || t('errors.somethingWentWrong'));
     }
@@ -159,69 +159,6 @@ const RegisterScreen = () => {
                 containerStyle={{ marginBottom: 20 }}
               />
 
-              {/* Role Selection */}
-              <View className="mb-6">
-                <Text className="text-sm font-semibold text-neutral-700 mb-3">
-                  {t('profile.role')} (Testing)
-                </Text>
-                <View className="flex-row gap-3">
-                  <TouchableOpacity
-                    onPress={() => setRole('customer')}
-                    className={`
-                      flex-1 flex-row items-center justify-between p-4 rounded-lg border-2
-                      ${role === 'customer' ? 'border-primary-500 bg-primary-50' : 'border-neutral-200 bg-white'}
-                    `}
-                  >
-                    <View className="flex-row items-center">
-                      <Icon
-                        name="account"
-                        size={20}
-                        color={role === 'customer' ? colors.primary[500] : colors.neutral[500]}
-                        style={{ marginRight: 8 }}
-                      />
-                      <Text
-                        className={`
-                          text-sm font-medium
-                          ${role === 'customer' ? 'text-primary-500' : 'text-neutral-600'}
-                        `}
-                      >
-                        {t('profile.customer')}
-                      </Text>
-                    </View>
-                    {role === 'customer' && (
-                      <Icon name="check-circle" size={20} color={colors.primary[500]} />
-                    )}
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => setRole('admin')}
-                    className={`
-                      flex-1 flex-row items-center justify-between p-4 rounded-lg border-2
-                      ${role === 'admin' ? 'border-primary-500 bg-primary-50' : 'border-neutral-200 bg-white'}
-                    `}
-                  >
-                    <View className="flex-row items-center">
-                      <Icon
-                        name="shield-account"
-                        size={20}
-                        color={role === 'admin' ? colors.primary[500] : colors.neutral[500]}
-                        style={{ marginRight: 8 }}
-                      />
-                      <Text
-                        className={`
-                          text-sm font-medium
-                          ${role === 'admin' ? 'text-primary-500' : 'text-neutral-600'}
-                        `}
-                      >
-                        {t('profile.admin')}
-                      </Text>
-                    </View>
-                    {role === 'admin' && (
-                      <Icon name="check-circle" size={20} color={colors.primary[500]} />
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
 
               <Input
                 label={t('auth.password')}

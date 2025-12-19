@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { RootStackParamList } from '../../types';
 import { useAuthStore } from '../../store/authStore';
+import { useCartStore } from '../../store/cartStore';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import { orderService } from '../../services/orderService';
@@ -22,6 +23,7 @@ import {
   OrderStatusUpdate,
 } from '../../components';
 import { formatPrice } from '../../utils/productUtils';
+import { formatDateTime } from '../../utils/regionalFormatting';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
 
@@ -32,10 +34,15 @@ const OrderDetailsScreen = () => {
   const route = useRoute<OrderDetailsScreenRouteProp>();
   const navigation = useNavigation<OrderDetailsScreenNavigationProp>();
   const { t } = useTranslation();
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
+  const { selectedCountry } = useCartStore();
   const queryClient = useQueryClient();
   const { orderId } = route.params;
-  const country = (user?.country_preference || COUNTRIES.GERMANY) as Country;
+  
+  // Use user's country preference if authenticated, otherwise use selected country from cart store
+  const country = (isAuthenticated && user?.country_preference) 
+    ? user.country_preference 
+    : (selectedCountry || COUNTRIES.GERMANY) as Country;
 
   // Fetch order
   const { data: order, isLoading: loadingOrder, error: orderError } = useQuery({
@@ -87,17 +94,6 @@ const OrderDetailsScreen = () => {
     );
   }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
   return (
     <View style={styles.container}>
       <AppHeader title="Order Details" showBack />
@@ -105,10 +101,19 @@ const OrderDetailsScreen = () => {
         <Card style={styles.headerCard}>
           <View style={styles.headerRow}>
             <View style={styles.orderInfo}>
-              <Text style={styles.orderNumber}>
+              <Text 
+                style={styles.orderNumber}
+                accessibilityRole="header"
+                accessibilityLabel={`Order number: ${order.id.slice(0, 8).toUpperCase()}`}
+              >
                 Order #{order.id.slice(0, 8).toUpperCase()}
               </Text>
-              <Text style={styles.orderDate}>{formatDate(order.created_at)}</Text>
+              <Text 
+                style={styles.orderDate}
+                accessibilityLabel={`Order date: ${formatDateTime(order.created_at, country)}`}
+              >
+                {formatDateTime(order.created_at, country)}
+              </Text>
             </View>
             <OrderStatusBadge status={order.status} />
           </View>
@@ -120,22 +125,40 @@ const OrderDetailsScreen = () => {
           <Text style={styles.sectionTitle}>Delivery Information</Text>
           {order.pickup_point_id && pickupPoint ? (
             <View style={styles.infoRow}>
-              <Icon name="map-marker" size={20} color="#007AFF" />
-              <View style={styles.infoContent}>
+              <Icon name="map-marker" size={20} color="#007AFF" accessibilityElementsHidden />
+              <View style={styles.infoContent} accessibilityRole="text">
                 <Text style={styles.infoLabel}>Pickup Point</Text>
-                <Text style={styles.infoValue}>{pickupPoint.name}</Text>
-                <Text style={styles.infoSubtext}>{pickupPoint.address}</Text>
-                <Text style={styles.infoFee}>
+                <Text 
+                  style={styles.infoValue}
+                  accessibilityLabel={`Pickup point: ${pickupPoint.name}`}
+                >
+                  {pickupPoint.name}
+                </Text>
+                <Text 
+                  style={styles.infoSubtext}
+                  accessibilityLabel={`Address: ${pickupPoint.address}`}
+                >
+                  {pickupPoint.address}
+                </Text>
+                <Text 
+                  style={styles.infoFee}
+                  accessibilityLabel={`Delivery fee: ${formatPrice(pickupPoint.delivery_fee, country)}`}
+                >
                   Delivery fee: {formatPrice(pickupPoint.delivery_fee, country)}
                 </Text>
               </View>
             </View>
           ) : order.delivery_address ? (
             <View style={styles.infoRow}>
-              <Icon name="home" size={20} color="#007AFF" />
-              <View style={styles.infoContent}>
+              <Icon name="home" size={20} color="#007AFF" accessibilityElementsHidden />
+              <View style={styles.infoContent} accessibilityRole="text">
                 <Text style={styles.infoLabel}>Delivery Address</Text>
-                <Text style={styles.infoValue}>{order.delivery_address}</Text>
+                <Text 
+                  style={styles.infoValue}
+                  accessibilityLabel={`Delivery address: ${order.delivery_address}`}
+                >
+                  {order.delivery_address}
+                </Text>
               </View>
             </View>
           ) : (
@@ -146,19 +169,25 @@ const OrderDetailsScreen = () => {
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>Payment Information</Text>
           <View style={styles.infoRow}>
-            <Icon name="credit-card" size={20} color="#007AFF" />
-            <View style={styles.infoContent}>
+            <Icon name="credit-card" size={20} color="#007AFF" accessibilityElementsHidden />
+            <View style={styles.infoContent} accessibilityRole="text">
               <Text style={styles.infoLabel}>Payment Method</Text>
-              <Text style={styles.infoValue}>
+              <Text 
+                style={styles.infoValue}
+                accessibilityLabel={`Payment method: ${order.payment_method === 'online' ? 'Online Payment' : 'Cash on Delivery'}`}
+              >
                 {order.payment_method === 'online' ? 'Online Payment' : 'Cash on Delivery'}
               </Text>
             </View>
           </View>
           <View style={styles.infoRow}>
-            <Icon name="check-circle" size={20} color="#34C759" />
-            <View style={styles.infoContent}>
+            <Icon name="check-circle" size={20} color="#34C759" accessibilityElementsHidden />
+            <View style={styles.infoContent} accessibilityRole="text">
               <Text style={styles.infoLabel}>Payment Status</Text>
-              <Text style={[styles.infoValue, styles.paymentStatus]}>
+              <Text 
+                style={[styles.infoValue, styles.paymentStatus]}
+                accessibilityLabel={`Payment status: ${order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1)}`}
+              >
                 {order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1)}
               </Text>
             </View>

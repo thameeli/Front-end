@@ -49,4 +49,12 @@ export { default as DiscountBadge } from './DiscountBadge';
 export { default as PromotionalBanner } from './PromotionalBanner';
 export { default as CategoryIconRow } from './CategoryIconRow';
 export { default as StripeProviderWrapper } from './StripeProviderWrapper';
+export { default as RatingDisplay } from './RatingDisplay';
+export { default as TrustBadge } from './TrustBadge';
+export { default as ReviewCard } from './ReviewCard';
+export { default as SuccessCelebration } from './SuccessCelebration';
+export { default as FavoriteButton } from './FavoriteButton';
+export { default as PaymentLogos } from './PaymentLogos';
+export { default as ImageZoomModal } from './ImageZoomModal';
+export { default as RelatedProducts } from './RelatedProducts';
 

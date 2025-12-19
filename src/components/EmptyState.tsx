@@ -36,6 +36,9 @@ interface EmptyStateProps {
   actionLabel?: string;
   onAction?: () => void;
   style?: any;
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
+  illustration?: React.ReactNode;
 }
 
 const EmptyState: React.FC<EmptyStateProps> = ({
@@ -45,6 +48,9 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   actionLabel,
   onAction,
   style,
+  secondaryActionLabel,
+  onSecondaryAction,
+  illustration,
 }) => {
   const containerOpacity = useSharedValue(0);
   const iconScale = useSharedValue(0.8);
@@ -90,15 +96,23 @@ const EmptyState: React.FC<EmptyStateProps> = ({
     <AnimatedView
       style={[containerStyle, style]}
       className="flex-1 justify-center items-center px-8 py-12"
+      accessibilityRole="text"
+      accessibilityLabel={`${title}. ${message || ''}`}
     >
       <AnimatedView style={iconStyle}>
-        <View className="w-24 h-24 rounded-full bg-neutral-100 justify-center items-center mb-6">
-          <Icon
-            name={icon as any}
-            size={48}
-            color={colors.neutral[400]}
-          />
-        </View>
+        {illustration ? (
+          <View className="mb-6">
+            {illustration}
+          </View>
+        ) : (
+          <View className="w-24 h-24 rounded-full bg-neutral-100 justify-center items-center mb-6">
+            <Icon
+              name={icon as any}
+              size={48}
+              color={colors.neutral[400]}
+            />
+          </View>
+        )}
       </AnimatedView>
 
       <AnimatedView style={textStyle}>
@@ -112,15 +126,27 @@ const EmptyState: React.FC<EmptyStateProps> = ({
         )}
       </AnimatedView>
 
-      {actionLabel && onAction && (
-        <AnimatedView style={buttonStyle}>
-          <Button
-            title={actionLabel}
-            onPress={onAction}
-            variant="primary"
-            size="md"
-            icon={<Icon name="arrow-right" size={18} color="white" />}
-          />
+      {(actionLabel || secondaryActionLabel) && (
+        <AnimatedView style={buttonStyle} className="w-full items-center gap-3">
+          {actionLabel && onAction && (
+            <Button
+              title={actionLabel}
+              onPress={onAction}
+              variant="primary"
+              size="md"
+              icon={<Icon name="arrow-right" size={18} color="white" />}
+              fullWidth
+            />
+          )}
+          {secondaryActionLabel && onSecondaryAction && (
+            <Button
+              title={secondaryActionLabel}
+              onPress={onSecondaryAction}
+              variant="outline"
+              size="md"
+              fullWidth
+            />
+          )}
         </AnimatedView>
       )}
     </AnimatedView>

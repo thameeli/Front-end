@@ -28,22 +28,22 @@ const PromotionalBanner: React.FC<PromotionalBannerProps> = ({
   onCollect,
   variant = 'primary',
 }) => {
-  const getGradientColors = () => {
+  const getGradientColors = (): string[] => {
     switch (variant) {
       case 'success':
-        return [colors.success[500], colors.success[600]];
+        return [colors.success[500] as string, colors.success[600] as string];
       case 'warning':
-        return [colors.warning[500], colors.warning[600]];
+        return [colors.warning[500] as string, colors.warning[600] as string];
       case 'primary':
       default:
-        return [colors.primary[500], colors.primary[600]];
+        return [colors.primary[500] as string, colors.primary[600] as string];
     }
   };
 
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={getGradientColors()}
+        colors={getGradientColors() as any}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.gradient}

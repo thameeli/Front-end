@@ -38,6 +38,23 @@ CREATE TRIGGER update_delivery_schedule_updated_at
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- ============================================
 
+-- Create is_admin function if it doesn't exist (needed for policies)
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- Temporarily disable RLS for this query to prevent recursion
+  SET LOCAL row_security = off;
+  RETURN EXISTS (
+    SELECT 1 FROM users
+    WHERE id = auth.uid() AND role = 'admin'
+  );
+END;
+$$;
+
 ALTER TABLE delivery_schedule ENABLE ROW LEVEL SECURITY;
 
 -- Users can view delivery schedule for their own orders
@@ -54,48 +71,23 @@ CREATE POLICY "Users can view own delivery schedule"
 -- Admins can view all delivery schedules
 CREATE POLICY "Admins can view all delivery schedules"
   ON delivery_schedule FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  USING (is_admin());
 
 -- Admins can insert delivery schedules
 CREATE POLICY "Admins can insert delivery schedules"
   ON delivery_schedule FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  WITH CHECK (is_admin());
 
 -- Admins can update delivery schedules
 CREATE POLICY "Admins can update delivery schedules"
   ON delivery_schedule FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  USING (is_admin())
+  WITH CHECK (is_admin());
 
 -- Admins can delete delivery schedules
 CREATE POLICY "Admins can delete delivery schedules"
   ON delivery_schedule FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  USING (is_admin());
 
 -- ============================================
 -- END OF DELIVERY SCHEDULE TABLE

@@ -134,7 +134,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
             activeOpacity={0.7}
           >
             <Icon
-              name="sort-alphabetical"
+              name="alphabetical"
               size={16}
               color={sortBy === 'name' ? '#fff' : colors.neutral[600]}
               style={styles.buttonIcon}

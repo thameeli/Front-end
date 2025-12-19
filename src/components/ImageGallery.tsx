@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, ScrollView, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
-import { SkeletonLoader } from './SkeletonLoader';
+import SkeletonLoader from './SkeletonLoader';
+import ImageZoomModal from './ImageZoomModal';
 
 interface ImageGalleryProps {
   images: string[];
@@ -15,6 +16,8 @@ const IMAGE_WIDTH = SCREEN_WIDTH;
 const ImageGallery: React.FC<ImageGalleryProps> = ({ images, style }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imageLoading, setImageLoading] = useState<Record<number, boolean>>({});
+  const [zoomVisible, setZoomVisible] = useState(false);
+  const [zoomedImage, setZoomedImage] = useState<string>('');
 
   if (!images || images.length === 0) {
     return (
@@ -36,6 +39,11 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ images, style }) => {
     setCurrentIndex(index);
   };
 
+  const handleImagePress = (imageUri: string) => {
+    setZoomedImage(imageUri);
+    setZoomVisible(true);
+  };
+
   return (
     <View style={[styles.container, style]}>
       <ScrollView
@@ -46,7 +54,14 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ images, style }) => {
         scrollEventThrottle={16}
       >
         {images.map((image, index) => (
-          <View key={index} style={styles.imageContainer}>
+          <TouchableOpacity
+            key={index}
+            style={styles.imageContainer}
+            onPress={() => handleImagePress(image)}
+            activeOpacity={0.9}
+            accessibilityRole="button"
+            accessibilityLabel={`View image ${index + 1} in full screen`}
+          >
             {imageLoading[index] !== false && (
               <View style={styles.loadingContainer}>
                 <SkeletonLoader width={IMAGE_WIDTH} height={300} />
@@ -60,7 +75,10 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ images, style }) => {
               onLoadStart={() => setImageLoading({ ...imageLoading, [index]: true })}
               onLoadEnd={() => setImageLoading({ ...imageLoading, [index]: false })}
             />
-          </View>
+            <View style={styles.zoomHint}>
+              <Icon name="magnify" size={20} color="white" />
+            </View>
+          </TouchableOpacity>
         ))}
       </ScrollView>
 
@@ -78,6 +96,12 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ images, style }) => {
           ))}
         </View>
       )}
+
+      <ImageZoomModal
+        visible={zoomVisible}
+        imageUri={zoomedImage}
+        onClose={() => setZoomVisible(false)}
+      />
     </View>
   );
 };
@@ -128,6 +152,14 @@ const styles = StyleSheet.create({
   indicatorActive: {
     backgroundColor: '#fff',
     width: 24,
+  },
+  zoomHint: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 20,
+    padding: 8,
   },
 });
 

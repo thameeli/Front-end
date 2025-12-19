@@ -3,7 +3,7 @@
  * Uses NativeWind for styling and Phase 2 components
  */
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Alert, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -86,11 +86,11 @@ const HomeScreen = () => {
     return filteredProducts.slice(0, 3);
   }, [filteredProducts]);
 
-  const handleProductPress = (productId: string) => {
-    navigation.navigate('ProductDetails', { productId });
-  };
+  const handleProductPress = React.useCallback((productId: string) => {
+    (navigation as any).navigate('ProductDetails', { productId });
+  }, [navigation]);
 
-  const handleAddToCart = (product: any) => {
+  const handleAddToCart = React.useCallback((product: any) => {
     if (!countrySelected && !selectedCountry) {
       Alert.alert(
         t('country.selectCountry') || 'Select Country',
@@ -107,11 +107,11 @@ const HomeScreen = () => {
           { text: t('common.cancel') || 'Cancel', style: 'cancel' },
           {
             text: t('auth.login') || 'Login',
-            onPress: () => navigation.navigate('Login'),
+            onPress: () => (navigation as any).navigate('Login'),
           },
           {
             text: t('auth.register') || 'Sign Up',
-            onPress: () => navigation.navigate('Register'),
+            onPress: () => (navigation as any).navigate('Register'),
             style: 'default',
           },
         ]
@@ -120,11 +120,27 @@ const HomeScreen = () => {
     }
 
     addItem(product, 1, country);
-  };
+  }, [countrySelected, selectedCountry, isAuthenticated, country, addItem, navigation, t]);
 
   const handleCountrySelect = async (selectedCountry: Country) => {
     await setSelectedCountry(selectedCountry);
   };
+
+  // Memoized render item
+  const renderProductItem = React.useCallback(({ item, index }: { item: any; index: number }) => (
+    <AnimatedView animation="fade" delay={index * 50} className="flex-1 m-2">
+      <ProductCard
+        product={item}
+        country={country}
+        onPress={() => handleProductPress(item.id)}
+        onAddToCart={() => handleAddToCart(item)}
+        index={index}
+      />
+    </AnimatedView>
+  ), [country, handleProductPress, handleAddToCart]);
+
+  // Memoized key extractor
+  const keyExtractor = React.useCallback((item: any) => item.id, []);
 
   if (isLoading) {
     return (
@@ -145,7 +161,9 @@ const HomeScreen = () => {
       <View className="flex-1 bg-white">
         <ErrorMessage
           message={t('errors.failedToLoadProducts') || 'Failed to load products'}
-          onRetry={refetch}
+          error={error}
+          onRetry={async () => { await refetch(); }}
+          retryWithBackoff={true}
         />
       </View>
     );
@@ -184,14 +202,14 @@ const HomeScreen = () => {
               <View className="flex-row gap-3 w-full">
                 <Button
                   title={t('auth.login') || 'Login'}
-                  onPress={() => navigation.navigate('Login')}
+                  onPress={() => (navigation as any).navigate('Login')}
                   variant="outline"
                   style={{ flex: 1, backgroundColor: 'white' }}
                   textStyle={{ color: colors.primary[500] }}
                 />
                 <Button
                   title={t('auth.register') || 'Sign Up'}
-                  onPress={() => navigation.navigate('Register')}
+                  onPress={() => (navigation as any).navigate('Register')}
                   style={{ flex: 1, backgroundColor: 'white' }}
                   textStyle={{ color: colors.primary[500] }}
                 />
@@ -401,25 +419,25 @@ const HomeScreen = () => {
       ) : (
         <FlatList
           data={filteredProducts}
-          keyExtractor={(item) => item.id}
+          keyExtractor={keyExtractor}
           numColumns={2}
-          renderItem={({ item, index }) => (
-            <ContentFadeIn delay={index * 50} style={{ flex: 1, margin: 8 }}>
-              <ProductCard
-                product={item}
-                country={country}
-                onPress={() => handleProductPress(item.id)}
-                onAddToCart={() => handleAddToCart(item)}
-                index={index}
-              />
-            </ContentFadeIn>
-          )}
+          renderItem={renderProductItem}
           ListHeaderComponent={renderHeader}
           contentContainerStyle={{ paddingBottom: 16 }}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
           }
           showsVerticalScrollIndicator={false}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          updateCellsBatchingPeriod={50}
+          initialNumToRender={10}
+          windowSize={10}
+          getItemLayout={(data, index) => ({
+            length: 250, // Approximate item height
+            offset: 250 * Math.floor(index / 2),
+            index,
+          })}
         />
       )}
     </View>

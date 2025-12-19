@@ -1,13 +1,13 @@
 import { Product, ProductCategory } from '../types';
 import { COUNTRIES } from '../constants';
 import type { Country } from '../constants';
+import { formatCurrency } from './regionalFormatting';
 
 /**
- * Format price for a specific country
+ * Format price for a specific country (uses regional formatting)
  */
 export const formatPrice = (price: number, country: Country): string => {
-  const symbol = country === COUNTRIES.GERMANY ? '€' : 'NOK';
-  return `${symbol} ${price.toFixed(2)}`;
+  return formatCurrency(price, country);
 };
 
 /**

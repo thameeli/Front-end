@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Switch } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AppHeader, Card, Button } from '../../components';
@@ -20,16 +20,18 @@ const NotificationSettingsScreen = () => {
     queryKey: ['notificationPreferences', user?.id],
     queryFn: () => notificationService.getPreferences(user?.id || ''),
     enabled: !!user?.id,
-    onSuccess: (data) => {
-      if (data) {
-        setPushEnabled(data.push_enabled);
-        setOrderNotifications(data.order_notifications);
-        setDeliveryNotifications(data.delivery_notifications);
-        setPaymentNotifications(data.payment_notifications);
-        setGeneralNotifications(data.general_notifications);
-      }
-    },
   });
+
+  // Update state when preferences are loaded
+  useEffect(() => {
+    if (preferences) {
+      setPushEnabled(preferences.push_enabled);
+      setOrderNotifications(preferences.order_notifications);
+      setDeliveryNotifications(preferences.delivery_notifications);
+      setPaymentNotifications(preferences.payment_notifications);
+      setGeneralNotifications(preferences.general_notifications);
+    }
+  }, [preferences]);
 
   // Update preferences
   const updateMutation = useMutation({

@@ -23,7 +23,7 @@ const NotificationPreview: React.FC<NotificationPreviewProps> = ({
     return result;
   };
 
-  const getNotificationIcon = (type: NotificationType): string => {
+  const getNotificationIcon = (type: NotificationType): any => {
     switch (type) {
       case 'order_confirmed':
         return 'check-circle';

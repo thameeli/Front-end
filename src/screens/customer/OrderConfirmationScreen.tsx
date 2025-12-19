@@ -1,14 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { RouteProp, useRoute } from '@react-navigation/native';
+import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
 import { RootStackParamList } from '../../types';
 import { useAuthStore } from '../../store/authStore';
+import { useCartStore } from '../../store/cartStore';
 import { useQuery } from '@tanstack/react-query';
 import { orderService } from '../../services/orderService';
 import { productService } from '../../services/productService';
-import { AppHeader, OrderReceipt, Button, LoadingScreen, ErrorMessage } from '../../components';
+import { AppHeader, OrderReceipt, Button, LoadingScreen, ErrorMessage, SuccessCelebration } from '../../components';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
 import type { OrderItem } from '../../types';
@@ -20,9 +21,15 @@ const OrderConfirmationScreen = () => {
   const route = useRoute<OrderConfirmationScreenRouteProp>();
   const navigation = useNavigation<OrderConfirmationScreenNavigationProp>();
   const { t } = useTranslation();
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
+  const { selectedCountry } = useCartStore();
   const { orderId } = route.params;
-  const country = (user?.country_preference || COUNTRIES.GERMANY) as Country;
+  
+  // Use user's country preference if authenticated, otherwise use selected country from cart store
+  const country = (isAuthenticated && user?.country_preference) 
+    ? user.country_preference 
+    : (selectedCountry || COUNTRIES.GERMANY) as Country;
+  const [showCelebration, setShowCelebration] = useState(true);
 
   // Fetch order
   const { data: order, isLoading: loadingOrder, error: orderError } = useQuery({
@@ -68,6 +75,14 @@ const OrderConfirmationScreen = () => {
   return (
     <View style={styles.container}>
       <AppHeader title="Order Confirmation" showBack={false} />
+      
+      <SuccessCelebration
+        visible={showCelebration}
+        message="Order Placed Successfully!"
+        onComplete={() => setShowCelebration(false)}
+        duration={2500}
+      />
+      
       <ScrollView style={styles.content}>
         <OrderReceipt
           order={order}

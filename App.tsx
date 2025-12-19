@@ -62,19 +62,21 @@ function App(): React.JSX.Element {
   console.log('🚀 [App.tsx] App component rendering...');
   const isDarkMode = useColorScheme() === 'dark';
   const loadCart = useCartStore((state) => state.loadCart);
+  const loadCountry = useCartStore((state) => state.loadCountry);
 
   useEffect(() => {
     console.log('🔵 [App.tsx] useEffect running - validating env and loading cart...');
     // Validate environment variables on app startup
     validateEnv();
     console.log('✅ [App.tsx] Environment validated');
-    // Load cart from storage
+    // Load cart and country from storage
     loadCart();
-    console.log('✅ [App.tsx] Cart loaded');
+    loadCountry(); // Load country preference on app start
+    console.log('✅ [App.tsx] Cart and country loaded');
     // Note: Notification handler initialization is disabled to prevent Expo Go conflicts
     // It will be initialized automatically when pushNotificationService is first used
     console.log('✅ [App.tsx] App initialization complete');
-  }, [loadCart]);
+  }, [loadCart, loadCountry]);
 
   return (
     <ErrorBoundary>

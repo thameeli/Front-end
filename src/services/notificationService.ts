@@ -198,5 +198,51 @@ export const notificationService = {
       throw error;
     }
   },
+
+  /**
+   * Get all notification templates
+   */
+  async getTemplates(): Promise<NotificationTemplate[]> {
+    try {
+      const supabase = getSupabase();
+      const { data, error } = await supabase
+        .from('notification_templates')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching notification templates:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Update notification template
+   */
+  async updateTemplate(templateId: string, updates: Partial<NotificationTemplate>): Promise<NotificationTemplate> {
+    try {
+      const supabase = getSupabase();
+      const { data, error } = await supabase
+        .from('notification_templates')
+        .update(updates)
+        .eq('id', templateId)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error updating notification template:', error);
+      throw error;
+    }
+  },
 };
 

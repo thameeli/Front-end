@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { PaymentMethod } from '../types';
+import PaymentLogos from './PaymentLogos';
+import TrustBadge from './TrustBadge';
 
 interface PaymentMethodSelectorProps {
   selectedMethod: PaymentMethod | null;
@@ -41,8 +43,20 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
             <Text style={styles.optionSubtitle}>
               Pay securely with card
             </Text>
+            {selectedMethod === 'online' && (
+              <View style={styles.paymentLogosContainer}>
+                <PaymentLogos size="sm" />
+              </View>
+            )}
           </View>
-          <Icon name="credit-card" size={24} color={selectedMethod === 'online' ? '#007AFF' : '#666'} />
+          <View style={styles.rightContent}>
+            <Icon name="credit-card" size={24} color={selectedMethod === 'online' ? '#007AFF' : '#666'} />
+            {selectedMethod === 'online' && (
+              <View style={styles.trustBadgeContainer}>
+                <TrustBadge type="secure-payment" size="sm" showLabel={false} />
+              </View>
+            )}
+          </View>
         </View>
       </TouchableOpacity>
 
@@ -113,6 +127,16 @@ const styles = StyleSheet.create({
   optionText: {
     flex: 1,
     marginLeft: 12,
+  },
+  paymentLogosContainer: {
+    marginTop: 8,
+  },
+  rightContent: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  trustBadgeContainer: {
+    marginTop: 4,
   },
   optionTitle: {
     fontSize: 16,

@@ -10,12 +10,13 @@ const LANGUAGE_KEY = '@thamili:language';
 i18n
   .use(initReactI18next)
   .init({
+    // @ts-ignore - i18next types may not match exactly
     compatibilityJSON: 'v3',
     resources: {
       en: { translation: en },
       ta: { translation: ta },
     },
-    lng: 'en', // Default language
+    lng: 'en', // Default language - English only
     fallbackLng: 'en',
     interpolation: {
       escapeValue: false, // React already escapes values

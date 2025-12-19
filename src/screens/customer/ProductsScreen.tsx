@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { RootStackParamList } from '../../types';
 import { useAuthStore } from '../../store/authStore';
+import { useCartStore } from '../../store/cartStore';
 import { useProducts } from '../../hooks/useProducts';
 import { ProductCard, SearchBar, FilterBar, EmptyState, LoadingScreen, ErrorMessage, AnimatedView, Badge, SkeletonCard, ContentFadeIn, SkeletonLoader } from '../../components';
 import { getFilteredProducts } from '../../utils/productUtils';
@@ -25,8 +26,13 @@ type ProductsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Pro
 const ProductsScreen = () => {
   const navigation = useNavigation<ProductsScreenNavigationProp>();
   const { t } = useTranslation();
-  const { user } = useAuthStore();
-  const country = (user?.country_preference || COUNTRIES.GERMANY) as Country;
+  const { user, isAuthenticated } = useAuthStore();
+  const { selectedCountry } = useCartStore();
+  
+  // Use user's country preference if authenticated, otherwise use selected country from cart store
+  const country = (isAuthenticated && user?.country_preference) 
+    ? user.country_preference 
+    : (selectedCountry || COUNTRIES.GERMANY) as Country;
   
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
@@ -93,7 +99,9 @@ const ProductsScreen = () => {
       <View className="flex-1 bg-neutral-50">
         <ErrorMessage
           message="Failed to load products. Please try again."
-          onRetry={() => refetch()}
+          error={error}
+          onRetry={async () => { await refetch(); }}
+          retryWithBackoff={true}
         />
       </View>
     );
@@ -169,30 +177,46 @@ const ProductsScreen = () => {
     );
   }
 
+  // Memoized render item for grid
+  const renderGridItem = React.useCallback(({ item, index }: { item: typeof filteredProducts[0]; index: number }) => (
+    <ContentFadeIn delay={index * 50} style={{ flex: 1, margin: 8 }}>
+      <ProductCard
+        product={item}
+        country={country}
+        onPress={() => handleProductPress(item.id)}
+        index={index}
+      />
+    </ContentFadeIn>
+  ), [country, handleProductPress]);
+
+  // Memoized key extractor
+  const keyExtractor = React.useCallback((item: typeof filteredProducts[0]) => item.id, []);
+
   // Grid View
   if (viewMode === 'grid') {
     return (
       <View className="flex-1 bg-neutral-50">
         <FlatList
           data={filteredProducts}
-          keyExtractor={(item) => item.id}
+          keyExtractor={keyExtractor}
           numColumns={2}
           ListHeaderComponent={renderHeader}
-          renderItem={({ item, index }) => (
-            <ContentFadeIn delay={index * 50} style={{ flex: 1, margin: 8 }}>
-              <ProductCard
-                product={item}
-                country={country}
-                onPress={() => handleProductPress(item.id)}
-                index={index}
-              />
-            </ContentFadeIn>
-          )}
+          renderItem={renderGridItem}
           contentContainerStyle={{ paddingBottom: 16 }}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
           }
           showsVerticalScrollIndicator={false}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          updateCellsBatchingPeriod={50}
+          initialNumToRender={10}
+          windowSize={10}
+          getItemLayout={(data, index) => ({
+            length: 250, // Approximate item height
+            offset: 250 * Math.floor(index / 2),
+            index,
+          })}
         />
       </View>
     );
@@ -203,24 +227,25 @@ const ProductsScreen = () => {
     <View className="flex-1 bg-neutral-50">
       <FlatList
         data={filteredProducts}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         numColumns={2}
         ListHeaderComponent={renderHeader}
-        renderItem={({ item, index }) => (
-          <ContentFadeIn delay={index * 50} style={{ flex: 1, margin: 8 }}>
-            <ProductCard
-              product={item}
-              country={country}
-              onPress={() => handleProductPress(item.id)}
-              index={index}
-            />
-          </ContentFadeIn>
-        )}
+        renderItem={renderGridItem}
         contentContainerStyle={{ paddingBottom: 16 }}
         refreshControl={
           <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
         }
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+        initialNumToRender={10}
+        windowSize={10}
+        getItemLayout={(data, index) => ({
+          length: 250, // Approximate item height
+          offset: 250 * Math.floor(index / 2),
+          index,
+        })}
       />
     </View>
   );

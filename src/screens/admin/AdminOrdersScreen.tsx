@@ -3,7 +3,7 @@
  * Uses NativeWind for styling and Phase 2 components
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -93,9 +93,23 @@ const AdminOrdersScreen = () => {
     });
   }, [orders, selectedStatus, selectedCountry, debouncedSearchQuery]);
 
-  const handleOrderPress = (orderId: string) => {
+  const handleOrderPress = useCallback((orderId: string) => {
     navigation.navigate('OrderDetails', { orderId });
-  };
+  }, [navigation]);
+  
+  // Memoized render item
+  const renderOrderItem = useCallback(({ item }: { item: typeof filteredOrders[0] }) => (
+    <ContentFadeIn delay={0} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+      <OrderCard
+        order={item}
+        country={country}
+        onPress={() => handleOrderPress(item.id)}
+      />
+    </ContentFadeIn>
+  ), [country, handleOrderPress]);
+
+  // Memoized key extractor
+  const keyExtractor = useCallback((item: typeof filteredOrders[0]) => item.id, []);
 
   if (isLoading) {
     return (
@@ -114,7 +128,9 @@ const AdminOrdersScreen = () => {
         <AppHeader title="Manage Orders" />
         <ErrorMessage
           message="Failed to load orders. Please try again."
-          onRetry={() => refetch()}
+          error={error}
+          onRetry={async () => { await refetch(); }}
+          retryWithBackoff={true}
         />
       </View>
     );
@@ -216,22 +232,24 @@ const AdminOrdersScreen = () => {
 
       <FlatList
         data={filteredOrders}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         ListHeaderComponent={renderHeader}
-        renderItem={({ item, index }) => (
-          <ContentFadeIn delay={index * 50} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
-            <OrderCard
-              order={item}
-              country={item.country}
-              onPress={() => handleOrderPress(item.id)}
-            />
-          </ContentFadeIn>
-        )}
+        renderItem={renderOrderItem}
         contentContainerStyle={{ paddingBottom: 16 }}
         refreshControl={
           <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
         }
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+        initialNumToRender={10}
+        windowSize={10}
+        getItemLayout={(data, index) => ({
+          length: 180, // Approximate order card height
+          offset: 180 * index,
+          index,
+        })}
       />
     </View>
   );

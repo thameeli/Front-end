@@ -64,7 +64,12 @@ const TabBarItem: React.FC<TabBarItemProps> = ({
       onLongPress={onLongPress}
       activeOpacity={0.7}
       className="flex-1 items-center justify-center relative"
-      style={{ paddingVertical: 8 }}
+      style={{ paddingVertical: 8, minHeight: 44 }} // WCAG minimum touch target
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint={`Double tap to navigate to ${label}`}
+      accessibilityState={{ selected: focused }}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     >
       <AnimatedView style={animatedStyle} className="items-center justify-center">
         <View className="relative">

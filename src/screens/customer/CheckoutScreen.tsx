@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, Alert, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, ScrollView, Alert, TouchableOpacity, StyleSheet, Platform, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -29,6 +29,7 @@ import {
   AnimatedView,
   Badge,
   EmptyState,
+  TrustBadge,
 } from '../../components';
 import StripePaymentButton from '../../components/StripePaymentButton';
 import { formatCartSummary, calculateDeliveryFee } from '../../utils/cartUtils';
@@ -45,9 +46,19 @@ type CheckoutStep = 'summary' | 'delivery' | 'payment' | 'review';
 const CheckoutScreen = () => {
   const navigation = useNavigation<CheckoutScreenNavigationProp>();
   const { t } = useTranslation();
-  const { user } = useAuthStore();
-  const { items, clearCart } = useCartStore();
-  const country = (user?.country_preference || COUNTRIES.GERMANY) as Country;
+  const { user, isAuthenticated } = useAuthStore();
+  const { items, clearCart, selectedCountry } = useCartStore();
+  
+  // Use user's country preference if authenticated, otherwise use selected country from cart store
+  const country = (isAuthenticated && user?.country_preference) 
+    ? user.country_preference 
+    : (selectedCountry || COUNTRIES.GERMANY) as Country;
+  const insets = useSafeAreaInsets();
+  
+  // Calculate tab bar height to position sticky button above it
+  const tabBarHeight = Platform.OS === 'ios' ? 60 : 56;
+  const bottomPadding = Math.max(insets.bottom, Platform.OS === 'ios' ? 8 : 4);
+  const totalTabBarHeight = tabBarHeight + bottomPadding;
 
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('summary');
   const [isHomeDelivery, setIsHomeDelivery] = useState(false);
@@ -165,10 +176,15 @@ const CheckoutScreen = () => {
       paymentDetails,
     };
 
-    const validation = validateCheckout(formData);
+    const validation = validateCheckout(formData, country);
     if (!validation.isValid) {
       setValidationErrors(validation.errors);
-      throw new Error('Please fill in all required fields correctly.');
+      // Create a more helpful error message listing missing fields
+      const errorMessages = Object.values(validation.errors);
+      const errorMessage = errorMessages.length > 0
+        ? `Please fix the following:\n${errorMessages.join('\n')}`
+        : 'Please fill in all required fields correctly.';
+      throw new Error(errorMessage);
     }
 
     setValidationErrors({});
@@ -441,6 +457,7 @@ const CheckoutScreen = () => {
                   setDeliveryAddress({ ...deliveryAddress, instructions: text })
                 }
                 errors={validationErrors}
+                country={country}
               />
             )}
           </AnimatedView>
@@ -537,7 +554,7 @@ const CheckoutScreen = () => {
               )}
             </View>
 
-            <View className="bg-white rounded-xl p-4">
+            <View className="bg-white rounded-xl p-4 mb-4">
               <Text className="text-lg font-bold text-neutral-900 mb-4">
                 Payment Method
               </Text>
@@ -549,6 +566,47 @@ const CheckoutScreen = () => {
                   ✓ Payment ready - Click "Pay" button to complete
                 </Text>
               )}
+            </View>
+
+            {/* Trust & Security Badges */}
+            <View className="bg-white rounded-xl p-4">
+              <Text className="text-lg font-bold text-neutral-900 mb-4">
+                Security & Trust
+              </Text>
+              <View className="flex-row flex-wrap gap-3">
+                <TrustBadge type="ssl" size="md" />
+                <TrustBadge type="secure-payment" size="md" />
+                <TrustBadge type="money-back" size="md" />
+                <TrustBadge type="verified" size="md" />
+              </View>
+              <View className="flex-row gap-4 mt-4">
+                <TouchableOpacity 
+                  onPress={() => {
+                    Linking.openURL('https://thamili.com/privacy-policy').catch(() => {
+                      Alert.alert('Error', 'Could not open privacy policy link');
+                    });
+                  }}
+                  accessibilityRole="link"
+                  accessibilityLabel="View privacy policy"
+                >
+                  <Text className="text-sm text-primary-500 underline">
+                    Privacy Policy
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  onPress={() => {
+                    Linking.openURL('https://thamili.com/terms').catch(() => {
+                      Alert.alert('Error', 'Could not open terms link');
+                    });
+                  }}
+                  accessibilityRole="link"
+                  accessibilityLabel="View terms and conditions"
+                >
+                  <Text className="text-sm text-primary-500 underline">
+                    Terms & Conditions
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </AnimatedView>
         );
@@ -586,10 +644,7 @@ const CheckoutScreen = () => {
         animation="slide"
         delay={0}
         enterFrom="bottom"
-        style={[
-          styles.navigationContainer,
-          { bottom: totalTabBarHeight }
-        ]}
+        style={[styles.navigationContainer, { bottom: totalTabBarHeight }] as any}
       >
         <View style={styles.buttonRow}>
           <Button
@@ -623,7 +678,7 @@ const CheckoutScreen = () => {
         </View>
       </AnimatedView>
 
-      {isProcessing && <LoadingOverlay message="Processing your order..." />}
+      {isProcessing && <LoadingOverlay visible={isProcessing} message="Processing your order..." />}
     </View>
   );
 };
@@ -651,12 +706,6 @@ const styles = StyleSheet.create({
   backButton: {
     flex: 1,
     marginRight: 12,
-  },
-  nextButton: {
-    flex: 2,
-  },
-  backButton: {
-    flex: 1,
   },
   nextButton: {
     flex: 2,

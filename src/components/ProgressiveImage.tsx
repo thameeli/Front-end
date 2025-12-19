@@ -3,7 +3,7 @@
  * Shows placeholder while loading, then fades in the actual image
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, ViewStyle } from 'react-native';
 import { Image, ImageProps } from 'expo-image';
 import Animated, {
@@ -13,16 +13,22 @@ import Animated, {
 } from 'react-native-reanimated';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { colors } from '../theme';
-import { SkeletonLoader } from './SkeletonLoader';
+import SkeletonLoader from './SkeletonLoader';
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 const AnimatedView = Animated.createAnimatedComponent(View);
 
-interface ProgressiveImageProps extends Omit<ImageProps, 'source'> {
+interface ProgressiveImageProps {
   source: { uri: string } | number;
   placeholder?: 'skeleton' | 'blur' | 'icon';
   style?: ViewStyle;
   containerStyle?: ViewStyle;
+  cachePolicy?: 'none' | 'disk' | 'memory' | 'memory-disk';
+  priority?: 'low' | 'normal' | 'high';
+  contentFit?: ImageProps['contentFit'];
+  transition?: number;
+  onLoadEnd?: () => void;
+  onError?: () => void;
 }
 
 const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
@@ -30,11 +36,25 @@ const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
   placeholder = 'skeleton',
   style,
   containerStyle,
+  cachePolicy = 'memory-disk',
+  priority = 'normal',
   ...props
 }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const opacity = useSharedValue(0);
+  
+  // Memoize image source to prevent unnecessary re-renders
+  const imageSource = useMemo(() => {
+    if (typeof source === 'object' && 'uri' in source) {
+      return {
+        uri: source.uri,
+        cachePolicy,
+        priority,
+      };
+    }
+    return source;
+  }, [source, cachePolicy, priority]);
 
   const handleLoadEnd = () => {
     setLoading(false);
@@ -61,7 +81,7 @@ const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
 
     switch (placeholder) {
       case 'skeleton':
-        return <SkeletonLoader width="100%" height="100%" borderRadius={0} />;
+        return <SkeletonLoader width={100} height={100} borderRadius={0} />;
       case 'blur':
         return (
           <View className="w-full h-full bg-neutral-200 justify-center items-center">
@@ -89,12 +109,14 @@ const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
 
       {/* Actual Image */}
       <AnimatedImage
-        source={source}
-        style={[style, imageStyle]}
+        source={imageSource}
+        style={[style as any, imageStyle]}
         onLoadEnd={handleLoadEnd}
         onError={handleError}
         contentFit="cover"
         transition={300}
+        cachePolicy={cachePolicy}
+        priority={priority}
         {...props}
       />
     </View>

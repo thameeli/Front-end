@@ -167,8 +167,18 @@ const styles = StyleSheet.create({
   },
 });
 
-// Set displayName for better debugging and NativeWind compatibility
-CartItem.displayName = 'CartItem';
+// Custom comparison for memoization
+const areEqual = (prevProps: CartItemProps, nextProps: CartItemProps) => {
+  return (
+    prevProps.item.product.id === nextProps.item.product.id &&
+    prevProps.item.quantity === nextProps.item.quantity &&
+    prevProps.country === nextProps.country
+  );
+};
 
-export default CartItem;
+// Set displayName for better debugging and NativeWind compatibility
+const MemoizedCartItem = React.memo(CartItem, areEqual);
+MemoizedCartItem.displayName = 'CartItem';
+
+export default MemoizedCartItem;
 

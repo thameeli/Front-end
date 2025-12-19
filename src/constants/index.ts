@@ -43,6 +43,7 @@ export const STORAGE_KEYS = {
   SELECTED_COUNTRY: '@thamili:selected_country',
   CART: '@thamili:cart',
   LANGUAGE: '@thamili:language',
+  ONBOARDING_COMPLETED: '@thamili:onboarding_completed',
 } as const;
 
 // Languages

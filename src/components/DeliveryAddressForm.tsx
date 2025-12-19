@@ -1,6 +1,9 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Input } from './Input';
+import React, { useRef } from 'react';
+import { View, Text, StyleSheet, TextInput } from 'react-native';
+import Input from './Input';
+import { formatPhoneNumber, validatePostalCode } from '../utils/regionalFormatting';
+import { COUNTRIES } from '../constants';
+import type { Country } from '../constants';
 
 interface DeliveryAddressFormProps {
   street: string;
@@ -15,6 +18,7 @@ interface DeliveryAddressFormProps {
   onInstructionsChange: (text: string) => void;
   errors?: Record<string, string>;
   style?: any;
+  country?: Country;
 }
 
 const DeliveryAddressForm: React.FC<DeliveryAddressFormProps> = ({
@@ -30,10 +34,46 @@ const DeliveryAddressForm: React.FC<DeliveryAddressFormProps> = ({
   onInstructionsChange,
   errors = {},
   style,
+  country = COUNTRIES.GERMANY,
 }) => {
+  // Refs for keyboard navigation
+  const cityRef = useRef<TextInput>(null);
+  const postalCodeRef = useRef<TextInput>(null);
+  const phoneRef = useRef<TextInput>(null);
+  const instructionsRef = useRef<TextInput>(null);
+  // Format phone number as user types
+  const handlePhoneChange = (text: string) => {
+    // Remove formatting to get raw digits
+    const digits = text.replace(/\D/g, '');
+    // Format based on country
+    const formatted = formatPhoneNumber(digits, country);
+    onPhoneChange(formatted);
+  };
+
+  // Validate postal code as user types
+  const handlePostalCodeChange = (text: string) => {
+    // Only allow digits
+    const digits = text.replace(/\D/g, '');
+    onPostalCodeChange(digits);
+    // Validation will be handled by parent component via errors prop
+  };
+
+  const postalCodePlaceholder = country === COUNTRIES.GERMANY 
+    ? '12345' 
+    : '1234';
+  const postalCodeMaxLength = country === COUNTRIES.GERMANY ? 5 : 4;
+
   return (
-    <View style={[styles.container, style]}>
-      <Text style={styles.title}>Delivery Address</Text>
+    <View 
+      style={[styles.container, style]}
+      accessibilityLabel="Delivery address form"
+    >
+      <Text 
+        style={styles.title}
+        accessibilityRole="header"
+      >
+        Delivery Address
+      </Text>
 
       <Input
         label="Street Address"
@@ -42,42 +82,63 @@ const DeliveryAddressForm: React.FC<DeliveryAddressFormProps> = ({
         onChangeText={onStreetChange}
         error={errors.street}
         autoCapitalize="words"
+        returnKeyType="next"
+        onSubmitEditing={() => cityRef.current?.focus()}
+        accessibilityLabel="Street address input"
+        accessibilityHint="Enter your street address"
       />
 
       <View style={styles.row}>
         <View style={styles.halfWidth}>
           <Input
+            ref={cityRef}
             label="City"
             placeholder="Enter city"
             value={city}
             onChangeText={onCityChange}
             error={errors.city}
             autoCapitalize="words"
+            returnKeyType="next"
+            onSubmitEditing={() => postalCodeRef.current?.focus()}
+            accessibilityLabel="City input"
+            accessibilityHint="Enter your city name"
           />
         </View>
         <View style={styles.halfWidth}>
           <Input
+            ref={postalCodeRef}
             label="Postal Code"
-            placeholder="Enter postal code"
+            placeholder={postalCodePlaceholder}
             value={postalCode}
-            onChangeText={onPostalCodeChange}
+            onChangeText={handlePostalCodeChange}
             error={errors.postalCode}
             keyboardType="number-pad"
+            maxLength={postalCodeMaxLength}
+            returnKeyType="next"
+            onSubmitEditing={() => phoneRef.current?.focus()}
+            accessibilityLabel={`Postal code input for ${country === COUNTRIES.GERMANY ? 'Germany' : 'Denmark'}`}
+            accessibilityHint={`Enter ${postalCodeMaxLength} digit postal code`}
           />
         </View>
       </View>
 
       <Input
+        ref={phoneRef}
         label="Phone Number"
-        placeholder="Enter phone number"
+        placeholder={country === COUNTRIES.GERMANY ? "+49 123 4567890" : "+45 12 34 56 78"}
         value={phone}
-        onChangeText={onPhoneChange}
+        onChangeText={handlePhoneChange}
         error={errors.phone}
         keyboardType="phone-pad"
         autoComplete="tel"
+        returnKeyType="next"
+        onSubmitEditing={() => instructionsRef.current?.focus()}
+        accessibilityLabel={`Phone number input for ${country === COUNTRIES.GERMANY ? 'Germany' : 'Denmark'}`}
+        accessibilityHint={`Enter phone number in ${country === COUNTRIES.GERMANY ? 'German' : 'Danish'} format`}
       />
 
       <Input
+        ref={instructionsRef}
         label="Delivery Instructions (Optional)"
         placeholder="Any special delivery instructions?"
         value={instructions}
@@ -85,7 +146,11 @@ const DeliveryAddressForm: React.FC<DeliveryAddressFormProps> = ({
         error={errors.instructions}
         multiline
         numberOfLines={3}
+        returnKeyType="done"
+        blurOnSubmit={true}
         style={styles.textArea}
+        accessibilityLabel="Delivery instructions input"
+        accessibilityHint="Enter any special delivery instructions (optional)"
       />
     </View>
   );

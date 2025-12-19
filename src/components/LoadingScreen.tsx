@@ -6,7 +6,16 @@
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import SkeletonLoader from './SkeletonLoader';
+import { ANIMATION_DURATION, EASING, MICRO_INTERACTIONS } from '../utils/animations';
+
+const AnimatedView = Animated.createAnimatedComponent(View);
 
 interface LoadingScreenProps {
   message?: string;
@@ -40,11 +49,30 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
     );
   }
 
-  // Fallback to simple loading state
+  // Fallback to simple loading state with pulse animation
+  const pulseScale = useSharedValue(1);
+  
+  React.useEffect(() => {
+    pulseScale.value = withRepeat(
+      withTiming(1.1, {
+        duration: 1000,
+        easing: EASING.easeInOut,
+      }),
+      -1,
+      true
+    );
+  }, []);
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }],
+  }));
+
   return (
     <View style={styles.simpleContainer}>
       <View style={styles.simpleContent}>
-        <SkeletonLoader width={60} height={60} borderRadius={30} style={styles.mb4} />
+        <AnimatedView style={pulseStyle}>
+          <SkeletonLoader width={60} height={60} borderRadius={30} style={styles.mb4} />
+        </AnimatedView>
         {message && (
           <Text style={styles.message}>{message}</Text>
         )}

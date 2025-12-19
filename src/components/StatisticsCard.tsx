@@ -27,13 +27,13 @@ const StatisticsCard: React.FC<StatisticsCardProps> = ({
       <View style={styles.header}>
         {icon && (
           <View style={[styles.iconContainer, { backgroundColor: `${iconColor}20` }]}>
-            <Icon name={icon} size={24} color={iconColor} />
+            <Icon name={icon as any} size={24} color={iconColor} />
           </View>
         )}
         {trend && (
           <View style={styles.trendContainer}>
             <Icon
-              name={trend.isPositive ? 'trending-up' : 'trending-down'}
+              name={(trend.isPositive ? 'trending-up' : 'trending-down') as any}
               size={16}
               color={trend.isPositive ? '#34C759' : '#FF3B30'}
             />

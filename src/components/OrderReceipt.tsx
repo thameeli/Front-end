@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { Order, OrderItem, Product } from '../types';
 import { formatPrice } from '../utils/productUtils';
+import { formatDateTime } from '../utils/regionalFormatting';
 import { COUNTRIES } from '../constants';
 import type { Country } from '../constants';
 
@@ -20,16 +21,6 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
   country,
   style,
 }) => {
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
 
   return (
     <ScrollView style={[styles.container, style]}>
@@ -43,7 +34,12 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
         <Text style={styles.sectionTitle}>Order Details</Text>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Order Date</Text>
-          <Text style={styles.detailValue}>{formatDate(order.created_at)}</Text>
+          <Text 
+            style={styles.detailValue}
+            accessibilityLabel={`Order date: ${formatDateTime(order.created_at, country)}`}
+          >
+            {formatDateTime(order.created_at, country)}
+          </Text>
         </View>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Status</Text>
@@ -75,22 +71,32 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
                   source={{ uri: item.product.image_url }}
                   style={styles.image}
                   contentFit="cover"
+                  accessibilityLabel={item.product.name || 'Product image'}
                 />
               ) : (
-                <View style={styles.placeholderImage}>
+                <View style={styles.placeholderImage} accessibilityElementsHidden>
                   <Icon name="image-off" size={24} color="#ccc" />
                 </View>
               )}
             </View>
             <View style={styles.itemContent}>
-              <Text style={styles.itemName}>
+              <Text 
+                style={styles.itemName}
+                accessibilityRole="header"
+              >
                 {item.product?.name || 'Product'}
               </Text>
-              <Text style={styles.itemQuantity}>
+              <Text 
+                style={styles.itemQuantity}
+                accessibilityLabel={`Quantity: ${item.quantity}`}
+              >
                 Quantity: {item.quantity}
               </Text>
             </View>
-            <Text style={styles.itemPrice}>
+            <Text 
+              style={styles.itemPrice}
+              accessibilityLabel={`Price: ${formatPrice(item.subtotal, country)}`}
+            >
               {formatPrice(item.subtotal, country)}
             </Text>
           </View>

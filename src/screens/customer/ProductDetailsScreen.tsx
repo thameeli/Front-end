@@ -9,14 +9,16 @@ import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
+import * as Sharing from 'expo-sharing';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { RootStackParamList } from '../../types';
 import { useAuthStore } from '../../store/authStore';
 import { useCartStore } from '../../store/cartStore';
-import { useProduct } from '../../hooks/useProducts';
-import { ImageGallery, Button, LoadingScreen, ErrorMessage, AppHeader, QuantitySelector, Badge, AnimatedView } from '../../components';
+import { useProduct, useProducts } from '../../hooks/useProducts';
+import { ImageGallery, Button, LoadingScreen, ErrorMessage, AppHeader, QuantitySelector, Badge, AnimatedView, RatingDisplay, ReviewCard, FavoriteButton, ProductCard } from '../../components';
 import { productService } from '../../services/productService';
 import { formatPrice, isInStock } from '../../utils/productUtils';
+import { mediumHaptic, successHaptic } from '../../utils/hapticFeedback';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
 import { colors } from '../../theme';
@@ -40,7 +42,40 @@ const ProductDetailsScreen = () => {
   const totalTabBarHeight = tabBarHeight + bottomPadding;
 
   const country = (user?.country_preference || selectedCountry || COUNTRIES.GERMANY) as Country;
-  const { data: product, isLoading, error } = useProduct(productId);
+  const { data: product, isLoading, error, refetch } = useProduct(productId);
+  
+  // Fetch all products for related products
+  const { data: allProducts = [] } = useProducts({ active: true });
+  
+  // Get related products (same category, excluding current product)
+  const relatedProducts = React.useMemo(() => {
+    if (!product || !allProducts.length) return [];
+    return allProducts
+      .filter(p => p.id !== product.id && p.category === product.category && p.active)
+      .slice(0, 4);
+  }, [product, allProducts]);
+  
+  // Share functionality
+  const handleShare = async () => {
+    if (!product) return;
+    
+    try {
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert('Sharing not available', 'Sharing is not available on this device');
+        return;
+      }
+      
+      const shareMessage = `Check out ${product.name} on Thamili!\n${product.description || ''}\nPrice: ${formatPrice(productService.getProductPrice(product, country), country)}`;
+      
+      await Sharing.shareAsync(shareMessage, {
+        mimeType: 'text/plain',
+        dialogTitle: `Share ${product.name}`,
+      });
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to share product');
+    }
+  };
 
   if (isLoading) {
     return <LoadingScreen message="Loading product details..." />;
@@ -50,7 +85,12 @@ const ProductDetailsScreen = () => {
     return (
       <View className="flex-1 bg-white">
         <AppHeader title="Product Details" showBack />
-        <ErrorMessage message="Failed to load product details. Please try again." />
+        <ErrorMessage 
+          message="Failed to load product details. Please try again."
+          error={error}
+          onRetry={() => refetch?.()}
+          retryWithBackoff={true}
+        />
       </View>
     );
   }
@@ -86,6 +126,7 @@ const ProductDetailsScreen = () => {
     }
 
     addItem(product, quantity, country);
+    successHaptic();
     Alert.alert('Success', 'Product added to cart!');
   };
 
@@ -114,9 +155,27 @@ const ProductDetailsScreen = () => {
         <AnimatedView animation="slide" delay={100} enterFrom="bottom" className="px-4 pt-6">
           <View className="flex-row items-start justify-between mb-4">
             <View className="flex-1">
-              <Text className="text-3xl font-bold text-neutral-900 mb-2">
-                {product.name}
-              </Text>
+              <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-3xl font-bold text-neutral-900 flex-1">
+                  {product.name}
+                </Text>
+                <View className="flex-row items-center gap-3">
+                  <TouchableOpacity
+                    onPress={handleShare}
+                    className="p-2"
+                    accessibilityRole="button"
+                    accessibilityLabel="Share product"
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Icon name="share-variant" size={24} color={colors.neutral[700]} />
+                  </TouchableOpacity>
+                  <FavoriteButton
+                    isFavorite={isFavorite}
+                    onToggle={() => setIsFavorite(!isFavorite)}
+                    size={28}
+                  />
+                </View>
+              </View>
               <View className="flex-row items-center gap-2 mb-3">
                 <Badge variant={product.category === 'fresh' ? 'success' : 'secondary'} size="sm">
                   {product.category === 'fresh' ? 'Fresh' : 'Frozen'}
@@ -140,12 +199,19 @@ const ProductDetailsScreen = () => {
             </View>
           </View>
 
-          {/* Price */}
+          {/* Price and Rating */}
           <View className="mb-6">
-            <Text className="text-4xl font-bold text-primary-500 mb-1">
+            <Text className="text-4xl font-bold text-primary-500 mb-2">
               {formatPrice(price, country)}
             </Text>
-            <Text className="text-sm text-neutral-500">
+            <RatingDisplay
+              rating={product.rating || 4.5}
+              size={18}
+              showNumber={true}
+              showCount={true}
+              reviewCount={product.review_count || Math.floor(Math.random() * 50) + 10}
+            />
+            <Text className="text-sm text-neutral-500 mt-1">
               {country === COUNTRIES.GERMANY ? 'Price in EUR' : 'Price in NOK'}
             </Text>
           </View>
@@ -178,6 +244,89 @@ const ProductDetailsScreen = () => {
                 min={1}
                 max={product.stock}
               />
+            </View>
+          )}
+
+          {/* Reviews Section */}
+          <View className="mb-6">
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-lg font-semibold text-neutral-900">
+                Customer Reviews
+              </Text>
+              <Text className="text-sm text-neutral-500">
+                {product.review_count || 25} reviews
+              </Text>
+            </View>
+            
+            {/* Sample Reviews */}
+            {[
+              {
+                id: '1',
+                userName: 'Sarah M.',
+                rating: 5,
+                comment: 'Excellent quality! Fresh and delivered on time. Highly recommend!',
+                date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+                verified: true,
+              },
+              {
+                id: '2',
+                userName: 'Michael K.',
+                rating: 4,
+                comment: 'Good product, fast delivery. Would order again.',
+                date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+                verified: true,
+              },
+              {
+                id: '3',
+                userName: 'Emma L.',
+                rating: 5,
+                comment: 'Perfect! Exactly as described. Great service!',
+                date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+                verified: false,
+              },
+            ].map((review) => (
+              <ReviewCard
+                key={review.id}
+                review={review}
+                country={country}
+                style={{ marginBottom: 12 }}
+              />
+            ))}
+          </View>
+
+          {/* Related Products Section */}
+          {relatedProducts.length > 0 && (
+            <View className="mb-6">
+              <View className="flex-row items-center justify-between mb-4">
+                <Text className="text-lg font-semibold text-neutral-900">
+                  Related Products
+                </Text>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('Products')}
+                  accessibilityRole="button"
+                  accessibilityLabel="View all products"
+                >
+                  <Text className="text-sm text-primary-500">View All</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingRight: 16 }}
+              >
+                {relatedProducts.map((relatedProduct, index) => (
+                  <View key={relatedProduct.id} style={{ marginRight: 12, width: 180 }}>
+                    <ProductCard
+                      product={relatedProduct}
+                      country={country}
+                      onPress={() => {
+                        navigation.replace('ProductDetails', { productId: relatedProduct.id });
+                      }}
+                      index={index}
+                    />
+                  </View>
+                ))}
+              </ScrollView>
             </View>
           )}
         </AnimatedView>

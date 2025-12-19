@@ -28,7 +28,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { colors } from '../theme';
 import { EASING } from '../utils/animations';
-import { ErrorMessage } from './ErrorMessage';
+import ErrorMessage from './ErrorMessage';
 import Button from './Button';
 
 const AnimatedView = Animated.createAnimatedComponent(View);
@@ -50,7 +50,7 @@ const NetworkErrorHandler: React.FC<NetworkErrorHandlerProps> = ({
   const opacity = useSharedValue(0);
 
   useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener((state) => {
+    const unsubscribe = NetInfo.addEventListener((state: any) => {
       const connected = state.isConnected ?? false;
       setIsConnected(connected);
 

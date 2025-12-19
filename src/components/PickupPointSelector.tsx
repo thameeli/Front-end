@@ -34,16 +34,23 @@ const PickupPointSelector: React.FC<PickupPointSelectorProps> = ({
         style={[
           styles.option,
           isHomeDelivery && styles.optionSelected,
+          { minHeight: 44 }, // WCAG minimum touch target
         ]}
         onPress={() => onToggleHomeDelivery(true)}
+        accessibilityRole="radio"
+        accessibilityLabel={`Home delivery, delivery fee ${formatPrice(5.0, country)}`}
+        accessibilityState={{ selected: isHomeDelivery }}
+        accessibilityHint="Double tap to select home delivery"
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
         <View style={styles.optionContent}>
           <Icon
             name={isHomeDelivery ? 'radiobox-marked' : 'radiobox-blank'}
             size={24}
             color={isHomeDelivery ? '#007AFF' : '#666'}
+            accessibilityElementsHidden
           />
-          <View style={styles.optionText}>
+          <View style={styles.optionText} accessibilityRole="text">
             <Text style={[styles.optionTitle, isHomeDelivery && styles.optionTitleSelected]}>
               Home Delivery
             </Text>
@@ -59,39 +66,49 @@ const PickupPointSelector: React.FC<PickupPointSelectorProps> = ({
       {pickupPoints.length === 0 ? (
         <Text style={styles.emptyText}>No pickup points available</Text>
       ) : (
-        pickupPoints.map((point) => (
-          <TouchableOpacity
-            key={point.id}
-            style={[
-              styles.option,
-              !isHomeDelivery && selectedPickupPointId === point.id && styles.optionSelected,
-            ]}
-            onPress={() => {
-              onToggleHomeDelivery(false);
-              onSelectPickupPoint(point.id);
-            }}
-          >
-            <View style={styles.optionContent}>
-              <Icon
-                name={!isHomeDelivery && selectedPickupPointId === point.id ? 'radiobox-marked' : 'radiobox-blank'}
-                size={24}
-                color={!isHomeDelivery && selectedPickupPointId === point.id ? '#007AFF' : '#666'}
-              />
-              <View style={styles.optionText}>
-                <Text style={[
-                  styles.optionTitle,
-                  !isHomeDelivery && selectedPickupPointId === point.id && styles.optionTitleSelected,
-                ]}>
-                  {point.name}
-                </Text>
-                <Text style={styles.optionSubtitle}>{point.address}</Text>
-                <Text style={styles.optionFee}>
-                  Delivery fee: {formatPrice(point.delivery_fee, country)}
-                </Text>
+        pickupPoints.map((point) => {
+          const isSelected = !isHomeDelivery && selectedPickupPointId === point.id;
+          return (
+            <TouchableOpacity
+              key={point.id}
+              style={[
+                styles.option,
+                isSelected && styles.optionSelected,
+                { minHeight: 44 }, // WCAG minimum touch target
+              ]}
+              onPress={() => {
+                onToggleHomeDelivery(false);
+                onSelectPickupPoint(point.id);
+              }}
+              accessibilityRole="radio"
+              accessibilityLabel={`Pickup point: ${point.name}, address: ${point.address}, delivery fee: ${formatPrice(point.delivery_fee, country)}`}
+              accessibilityState={{ selected: isSelected }}
+              accessibilityHint="Double tap to select this pickup point"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <View style={styles.optionContent}>
+                <Icon
+                  name={isSelected ? 'radiobox-marked' : 'radiobox-blank'}
+                  size={24}
+                  color={isSelected ? '#007AFF' : '#666'}
+                  accessibilityElementsHidden
+                />
+                <View style={styles.optionText} accessibilityRole="text">
+                  <Text style={[
+                    styles.optionTitle,
+                    isSelected && styles.optionTitleSelected,
+                  ]}>
+                    {point.name}
+                  </Text>
+                  <Text style={styles.optionSubtitle}>{point.address}</Text>
+                  <Text style={styles.optionFee}>
+                    Delivery fee: {formatPrice(point.delivery_fee, country)}
+                  </Text>
+                </View>
               </View>
-            </View>
-          </TouchableOpacity>
-        ))
+            </TouchableOpacity>
+          );
+        })
       )}
     </View>
   );

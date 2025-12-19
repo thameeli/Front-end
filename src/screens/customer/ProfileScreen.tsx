@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { RootStackParamList } from '../../types';
 import { useAuthStore } from '../../store/authStore';
 import { AppHeader, CountrySelector, Card, AnimatedView, Badge } from '../../components';
+import { formatPhoneNumber } from '../../utils/regionalFormatting';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
 import { colors } from '../../theme';
@@ -141,8 +142,11 @@ const ProfileScreen = () => {
                     <Text className="text-xs text-neutral-500 mb-1">
                       {t('profile.phone')}
                     </Text>
-                    <Text className="text-base font-semibold text-neutral-900">
-                      {user.phone}
+                    <Text 
+                      className="text-base font-semibold text-neutral-900"
+                      accessibilityLabel={`Phone number: ${formatPhoneNumber(user.phone, user.country_preference || COUNTRIES.GERMANY)}`}
+                    >
+                      {formatPhoneNumber(user.phone, user.country_preference || COUNTRIES.GERMANY)}
                     </Text>
                   </View>
                 </View>

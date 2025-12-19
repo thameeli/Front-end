@@ -89,7 +89,7 @@ const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
         return (
           <View key={status} style={styles.timelineRow}>
             <View style={styles.timelineIconContainer}>
-              <Icon name={config.icon} size={24} color={config.color} />
+              <Icon name={config.icon as any} size={24} color={config.color} />
               {!isLast && (
                 <View
                   style={[

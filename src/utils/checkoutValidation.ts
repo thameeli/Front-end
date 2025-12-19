@@ -1,5 +1,8 @@
 import { PaymentMethod } from '../types';
 import { PickupPoint } from '../types';
+import { validatePostalCode } from './regionalFormatting';
+import { COUNTRIES } from '../constants';
+import type { Country } from '../constants';
 
 export interface CheckoutFormData {
   isHomeDelivery: boolean;
@@ -24,7 +27,8 @@ export interface CheckoutFormData {
  * Validate checkout form
  */
 export const validateCheckout = (
-  formData: CheckoutFormData
+  formData: CheckoutFormData,
+  country: Country = COUNTRIES.GERMANY
 ): {
   isValid: boolean;
   errors: Record<string, string>;
@@ -46,11 +50,21 @@ export const validateCheckout = (
     }
     if (!formData.deliveryAddress.postalCode.trim()) {
       errors.postalCode = 'Postal code is required';
+    } else {
+      // Use regional postal code validation
+      const postalValidation = validatePostalCode(formData.deliveryAddress.postalCode, country);
+      if (!postalValidation.isValid) {
+        errors.postalCode = postalValidation.error || 'Invalid postal code format';
+      }
     }
     if (!formData.deliveryAddress.phone.trim()) {
       errors.phone = 'Phone number is required';
-    } else if (!/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/.test(formData.deliveryAddress.phone)) {
-      errors.phone = 'Invalid phone number format';
+    } else {
+      // Basic phone validation (regional formatting handles the rest)
+      const digits = formData.deliveryAddress.phone.replace(/\D/g, '');
+      if (digits.length < 8) {
+        errors.phone = 'Phone number is too short';
+      }
     }
   }
 
@@ -59,22 +73,9 @@ export const validateCheckout = (
     errors.paymentMethod = 'Please select a payment method';
   }
 
-  // Validate payment details if online payment
-  if (formData.paymentMethod === 'online') {
-    if (!formData.paymentDetails.cardholderName.trim()) {
-      errors.cardholderName = 'Cardholder name is required';
-    }
-    const cardNumber = formData.paymentDetails.cardNumber.replace(/\s/g, '');
-    if (!cardNumber || cardNumber.length < 13 || cardNumber.length > 19) {
-      errors.cardNumber = 'Invalid card number';
-    }
-    if (!formData.paymentDetails.expiryDate || !/^\d{2}\/\d{2}$/.test(formData.paymentDetails.expiryDate)) {
-      errors.expiryDate = 'Invalid expiry date (MM/YY)';
-    }
-    if (!formData.paymentDetails.cvv || formData.paymentDetails.cvv.length < 3) {
-      errors.cvv = 'Invalid CVV';
-    }
-  }
+  // Note: Payment details validation is not required for online payments
+  // because Stripe handles payment collection through their payment button.
+  // The payment details are collected securely by Stripe's payment sheet.
 
   return {
     isValid: Object.keys(errors).length === 0,
@@ -110,7 +111,8 @@ export const validatePickupPoint = (
  * Validate delivery address
  */
 export const validateDeliveryAddress = (
-  address: CheckoutFormData['deliveryAddress']
+  address: CheckoutFormData['deliveryAddress'],
+  country: Country = COUNTRIES.GERMANY
 ): {
   isValid: boolean;
   errors: Record<string, string>;
@@ -127,12 +129,22 @@ export const validateDeliveryAddress = (
 
   if (!address.postalCode.trim()) {
     errors.postalCode = 'Postal code is required';
+  } else {
+    // Use regional postal code validation
+    const postalValidation = validatePostalCode(address.postalCode, country);
+    if (!postalValidation.isValid) {
+      errors.postalCode = postalValidation.error || 'Invalid postal code format';
+    }
   }
 
   if (!address.phone.trim()) {
     errors.phone = 'Phone number is required';
-  } else if (!/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/.test(address.phone)) {
-    errors.phone = 'Invalid phone number format';
+  } else {
+    // Basic phone validation (regional formatting handles the rest)
+    const digits = address.phone.replace(/\D/g, '');
+    if (digits.length < 8) {
+      errors.phone = 'Phone number is too short';
+    }
   }
 
   return {

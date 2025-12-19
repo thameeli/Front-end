@@ -3,6 +3,24 @@
 -- Supabase PostgreSQL Database
 -- ============================================
 
+-- Create a security definer function to check if user is admin
+-- This function bypasses RLS to prevent infinite recursion
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- Temporarily disable RLS for this query to prevent recursion
+  SET LOCAL row_security = off;
+  RETURN EXISTS (
+    SELECT 1 FROM users
+    WHERE id = auth.uid() AND role = 'admin'
+  );
+END;
+$$;
+
 -- Enable Row Level Security on all tables
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
@@ -28,22 +46,13 @@ CREATE POLICY "Users can update own profile"
 -- Admins can view all users
 CREATE POLICY "Admins can view all users"
   ON users FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  USING (is_admin());
 
 -- Admins can update all users
 CREATE POLICY "Admins can update all users"
   ON users FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  USING (is_admin())
+  WITH CHECK (is_admin());
 
 -- ============================================
 -- 2. PRODUCTS TABLE POLICIES
@@ -57,38 +66,18 @@ CREATE POLICY "Anyone can view active products"
 -- Only admins can insert products
 CREATE POLICY "Admins can insert products"
   ON products FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  WITH CHECK (is_admin());
 
 -- Only admins can update products
 CREATE POLICY "Admins can update products"
   ON products FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  USING (is_admin())
+  WITH CHECK (is_admin());
 
 -- Only admins can delete products
 CREATE POLICY "Admins can delete products"
   ON products FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  USING (is_admin());
 
 -- ============================================
 -- 3. PICKUP POINTS TABLE POLICIES
@@ -102,38 +91,18 @@ CREATE POLICY "Anyone can view active pickup points"
 -- Only admins can insert pickup points
 CREATE POLICY "Admins can insert pickup points"
   ON pickup_points FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  WITH CHECK (is_admin());
 
 -- Only admins can update pickup points
 CREATE POLICY "Admins can update pickup points"
   ON pickup_points FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  USING (is_admin())
+  WITH CHECK (is_admin());
 
 -- Only admins can delete pickup points
 CREATE POLICY "Admins can delete pickup points"
   ON pickup_points FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  USING (is_admin());
 
 -- ============================================
 -- 4. ORDERS TABLE POLICIES
@@ -162,28 +131,13 @@ CREATE POLICY "Users can update own pending orders"
 -- Admins can view all orders
 CREATE POLICY "Admins can view all orders"
   ON orders FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  USING (is_admin());
 
 -- Admins can update all orders (for status changes)
 CREATE POLICY "Admins can update all orders"
   ON orders FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  USING (is_admin())
+  WITH CHECK (is_admin());
 
 -- ============================================
 -- 5. ORDER ITEMS TABLE POLICIES
@@ -214,48 +168,23 @@ CREATE POLICY "Users can create own order items"
 -- Admins can view all order items
 CREATE POLICY "Admins can view all order items"
   ON order_items FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  USING (is_admin());
 
 -- Admins can insert order items
 CREATE POLICY "Admins can insert order items"
   ON order_items FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  WITH CHECK (is_admin());
 
 -- Admins can update order items
 CREATE POLICY "Admins can update order items"
   ON order_items FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  USING (is_admin())
+  WITH CHECK (is_admin());
 
 -- Admins can delete order items
 CREATE POLICY "Admins can delete order items"
   ON order_items FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  USING (is_admin());
 
 -- ============================================
 -- END OF RLS POLICIES

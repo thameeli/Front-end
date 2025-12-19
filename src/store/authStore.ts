@@ -16,6 +16,7 @@ interface AuthState {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  hasCompletedOnboarding: boolean;
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -25,6 +26,8 @@ interface AuthState {
   updateProfile: (updates: Partial<User>) => Promise<{ success: boolean; error?: string }>;
   updateCountryPreference: (country: Country) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  completeOnboarding: () => Promise<void>;
+  checkOnboardingStatus: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -210,14 +213,37 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.log('✅ [authStore] User and session received, fetching profile...');
 
       // Fetch user profile from database
-      const { data: profile, error: profileError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+      // Use RPC call as fallback if direct query fails due to RLS issues
+      let profile: any = null;
+      let profileError: any = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        profile = data;
+        profileError = error;
+      } catch (err: any) {
+        profileError = err;
+        console.warn('⚠️ [authStore] Profile fetch error, trying alternative method:', err.message);
+        
+        // Try alternative: use a stored procedure or direct query
+        // For now, we'll use user metadata as fallback
+        try {
+          // Try to get from user metadata if available
+          if (user.user_metadata?.role) {
+            profile = { role: user.user_metadata.role };
+          }
+        } catch (metaErr) {
+          console.warn('⚠️ [authStore] Could not get role from metadata');
+        }
+      }
 
-      if (profileError) {
-        console.warn('⚠️ [authStore] Profile fetch error (continuing anyway):', profileError.message);
+      if (profileError && !profile) {
+        console.warn('⚠️ [authStore] Profile fetch error (continuing anyway):', profileError?.message || 'Unknown error');
       }
 
       const userData: User = {
@@ -225,8 +251,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         email: user.email || email,
         phone: user.phone || profile?.phone,
         name: profile?.name || user.user_metadata?.name || user.email?.split('@')[0],
-        role: profile?.role || 'customer',
-        country_preference: profile?.country_preference,
+        role: profile?.role || user.user_metadata?.role || 'customer',
+        country_preference: profile?.country_preference || user.user_metadata?.country_preference,
         created_at: user.created_at,
       };
 
@@ -400,11 +426,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: true });
       const token = await AsyncStorage.getItem(STORAGE_KEYS.USER_TOKEN);
       const userData = await AsyncStorage.getItem(STORAGE_KEYS.USER_DATA);
+      const onboardingCompleted = await AsyncStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETED);
 
       if (token && userData) {
         const user = JSON.parse(userData);
         set({ user, token, isAuthenticated: true });
       }
+
+      set({ hasCompletedOnboarding: onboardingCompleted === 'true' });
 
       // Get Supabase client directly (not through Proxy) to ensure getSession works
       const supabase = getSupabase();
@@ -535,6 +564,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return { success: false, error: error.message || 'Failed to change password' };
     } finally {
       set({ isLoading: false });
+    }
+  },
+
+  completeOnboarding: async () => {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.ONBOARDING_COMPLETED, 'true');
+      set({ hasCompletedOnboarding: true });
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+    }
+  },
+
+  checkOnboardingStatus: async () => {
+    try {
+      const completed = await AsyncStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETED);
+      set({ hasCompletedOnboarding: completed === 'true' });
+    } catch (error) {
+      console.error('Error checking onboarding status:', error);
+      set({ hasCompletedOnboarding: false });
     }
   },
 }));

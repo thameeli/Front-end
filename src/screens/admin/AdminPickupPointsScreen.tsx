@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { RootStackParamList, PickupPoint } from '../../types';
 import { pickupPointService } from '../../services';
 import { AppHeader, Button, EmptyState, LoadingScreen, ErrorMessage } from '../../components';
+import { useAuthStore } from '../../store/authStore';
 import { formatPrice } from '../../utils/productUtils';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
@@ -49,15 +50,15 @@ const AdminPickupPointsScreen = () => {
     },
   });
 
-  const handleAddPickupPoint = () => {
-    navigation.navigate('AddPickupPoint' as never);
-  };
+  const handleAddPickupPoint = useCallback(() => {
+    (navigation as any).navigate('AddPickupPoint');
+  }, [navigation]);
 
-  const handleEditPickupPoint = (pickupPointId: string) => {
-    navigation.navigate('EditPickupPoint' as never, { pickupPointId } as never);
-  };
+  const handleEditPickupPoint = useCallback((pickupPointId: string) => {
+    (navigation as any).navigate('EditPickupPoint', { pickupPointId });
+  }, [navigation]);
 
-  const handleDeletePickupPoint = (point: PickupPoint) => {
+  const handleDeletePickupPoint = useCallback((point: PickupPoint) => {
     Alert.alert(
       'Delete Pickup Point',
       `Are you sure you want to delete "${point.name}"?`,
@@ -70,14 +71,78 @@ const AdminPickupPointsScreen = () => {
         },
       ]
     );
-  };
+  }, [deleteMutation]);
 
-  const handleToggleActive = (point: PickupPoint) => {
+  const handleToggleActive = useCallback((point: PickupPoint) => {
     toggleActiveMutation.mutate({
       pickupPointId: point.id,
       active: !point.active,
     });
-  };
+  }, [toggleActiveMutation]);
+  
+  // Memoized render item
+  const renderPickupPointItem = useCallback(({ item }: { item: PickupPoint }) => (
+    <View style={styles.pickupPointCard}>
+      <View style={styles.pickupPointHeader}>
+        <View style={styles.pickupPointInfo}>
+          <Text style={styles.pickupPointName}>{item.name}</Text>
+          <Text style={styles.pickupPointAddress}>{item.address}</Text>
+          <View style={styles.pickupPointMeta}>
+            <Text style={styles.pickupPointCountry}>
+              {item.country.charAt(0).toUpperCase() + item.country.slice(1)}
+            </Text>
+            <Text style={styles.pickupPointFee}>
+              Fee: {formatPrice(item.delivery_fee, item.country as Country)}
+            </Text>
+          </View>
+          {!item.active && (
+            <Text style={styles.inactiveLabel}>Inactive</Text>
+          )}
+        </View>
+      </View>
+      <View style={styles.actions}>
+        <TouchableOpacity
+          style={[styles.actionButton, !item.active && styles.activeButton]}
+          onPress={() => handleToggleActive(item)}
+          accessibilityRole="button"
+          accessibilityLabel={item.active ? 'Deactivate pickup point' : 'Activate pickup point'}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Icon
+            name={item.active ? 'eye-off' : 'eye'}
+            size={18}
+            color={item.active ? '#666' : '#34C759'}
+          />
+          <Text style={[styles.actionText, !item.active && styles.activeText]}>
+            {item.active ? 'Deactivate' : 'Activate'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.editButton]}
+          onPress={() => handleEditPickupPoint(item.id)}
+          accessibilityRole="button"
+          accessibilityLabel="Edit pickup point"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Icon name="pencil" size={18} color="#007AFF" />
+          <Text style={[styles.actionText, styles.editText]}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.deleteButton]}
+          onPress={() => handleDeletePickupPoint(item)}
+          accessibilityRole="button"
+          accessibilityLabel="Delete pickup point"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Icon name="delete" size={18} color="#FF3B30" />
+          <Text style={[styles.actionText, styles.deleteText]}>Delete</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  ), [handleToggleActive, handleEditPickupPoint, handleDeletePickupPoint]);
+  
+  // Memoized key extractor
+  const keyExtractor = useCallback((item: PickupPoint) => item.id, []);
 
   if (isLoading) {
     return <LoadingScreen message="Loading pickup points..." />;
@@ -89,7 +154,9 @@ const AdminPickupPointsScreen = () => {
         <AppHeader title="Manage Pickup Points" />
         <ErrorMessage
           message="Failed to load pickup points. Please try again."
-          onRetry={() => refetch()}
+          error={error}
+          onRetry={async () => { await refetch(); }}
+          retryWithBackoff={true}
         />
       </View>
     );
@@ -99,10 +166,11 @@ const AdminPickupPointsScreen = () => {
     <View style={styles.container}>
       <AppHeader
         title="Manage Pickup Points"
-        rightAction={{
-          icon: 'plus',
-          onPress: handleAddPickupPoint,
-        }}
+        rightAction={
+          <TouchableOpacity onPress={handleAddPickupPoint} style={{ padding: 8 }}>
+            <Icon name="plus" size={24} color="#000" />
+          </TouchableOpacity>
+        }
       />
 
       {pickupPoints.length === 0 ? (
@@ -114,58 +182,19 @@ const AdminPickupPointsScreen = () => {
       ) : (
         <FlatList
           data={pickupPoints}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.pickupPointCard}>
-              <View style={styles.pickupPointHeader}>
-                <View style={styles.pickupPointInfo}>
-                  <Text style={styles.pickupPointName}>{item.name}</Text>
-                  <Text style={styles.pickupPointAddress}>{item.address}</Text>
-                  <View style={styles.pickupPointMeta}>
-                    <Text style={styles.pickupPointCountry}>
-                      {item.country.charAt(0).toUpperCase() + item.country.slice(1)}
-                    </Text>
-                    <Text style={styles.pickupPointFee}>
-                      Fee: {formatPrice(item.delivery_fee, item.country as Country)}
-                    </Text>
-                  </View>
-                  {!item.active && (
-                    <Text style={styles.inactiveLabel}>Inactive</Text>
-                  )}
-                </View>
-              </View>
-              <View style={styles.actions}>
-                <TouchableOpacity
-                  style={[styles.actionButton, !item.active && styles.activeButton]}
-                  onPress={() => handleToggleActive(item)}
-                >
-                  <Icon
-                    name={item.active ? 'eye-off' : 'eye'}
-                    size={20}
-                    color={item.active ? '#666' : '#34C759'}
-                  />
-                  <Text style={[styles.actionText, !item.active && styles.activeText]}>
-                    {item.active ? 'Deactivate' : 'Activate'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.editButton]}
-                  onPress={() => handleEditPickupPoint(item.id)}
-                >
-                  <Icon name="pencil" size={20} color="#007AFF" />
-                  <Text style={[styles.actionText, styles.editText]}>Edit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.deleteButton]}
-                  onPress={() => handleDeletePickupPoint(item)}
-                >
-                  <Icon name="delete" size={20} color="#FF3B30" />
-                  <Text style={[styles.actionText, styles.deleteText]}>Delete</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
+          keyExtractor={keyExtractor}
+          renderItem={renderPickupPointItem}
           contentContainerStyle={styles.listContent}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          updateCellsBatchingPeriod={50}
+          initialNumToRender={10}
+          windowSize={10}
+          getItemLayout={(data, index) => ({
+            length: 200, // Approximate pickup point card height
+            offset: 200 * index,
+            index,
+          })}
         />
       )}
 

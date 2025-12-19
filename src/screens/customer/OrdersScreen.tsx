@@ -35,8 +35,13 @@ type OrdersScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Order
 const OrdersScreen = () => {
   const navigation = useNavigation<OrdersScreenNavigationProp>();
   const { t } = useTranslation();
-  const { user } = useAuthStore();
-  const country = (user?.country_preference || COUNTRIES.GERMANY) as Country;
+  const { user, isAuthenticated } = useAuthStore();
+  const { selectedCountry } = useCartStore();
+  
+  // Use user's country preference if authenticated, otherwise use selected country from cart store
+  const country = (isAuthenticated && user?.country_preference) 
+    ? user.country_preference 
+    : (selectedCountry || COUNTRIES.GERMANY) as Country;
 
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -84,9 +89,23 @@ const OrdersScreen = () => {
     });
   }, [orders, selectedStatus, debouncedSearchQuery]);
 
-  const handleOrderPress = (orderId: string) => {
+  const handleOrderPress = React.useCallback((orderId: string) => {
     navigation.navigate('OrderDetails', { orderId });
-  };
+  }, [navigation]);
+
+  // Memoized render item
+  const renderOrderItem = React.useCallback(({ item }: { item: typeof filteredOrders[0] }) => (
+    <ContentFadeIn delay={0} style={{ marginBottom: 12 }}>
+      <OrderCard
+        order={item}
+        country={country}
+        onPress={() => handleOrderPress(item.id)}
+      />
+    </ContentFadeIn>
+  ), [country, handleOrderPress]);
+
+  // Memoized key extractor
+  const keyExtractor = React.useCallback((item: typeof filteredOrders[0]) => item.id, []);
 
   if (isLoading) {
     return (
@@ -105,7 +124,9 @@ const OrdersScreen = () => {
         <AppHeader title="My Orders" />
         <ErrorMessage
           message="Failed to load orders. Please try again."
-          onRetry={() => refetch()}
+          error={error}
+          onRetry={async () => { await refetch(); }}
+          retryWithBackoff={true}
         />
       </View>
     );
@@ -163,22 +184,24 @@ const OrdersScreen = () => {
       
       <FlatList
         data={filteredOrders}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         ListHeaderComponent={renderHeader}
-        renderItem={({ item, index }) => (
-          <ContentFadeIn delay={index * 50} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
-            <OrderCard
-              order={item}
-              country={country}
-              onPress={() => handleOrderPress(item.id)}
-            />
-          </ContentFadeIn>
-        )}
+        renderItem={renderOrderItem}
         contentContainerStyle={{ paddingBottom: 16 }}
         refreshControl={
           <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
         }
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+        initialNumToRender={10}
+        windowSize={10}
+        getItemLayout={(data, index) => ({
+          length: 180, // Approximate order card height
+          offset: 180 * index,
+          index,
+        })}
       />
     </View>
   );

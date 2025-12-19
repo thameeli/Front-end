@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { OrderStatus } from '../types';
-import { OrderStatusBadge } from './OrderStatusBadge';
+import OrderStatusBadge from './OrderStatusBadge';
 
 interface OrderStatusUpdateProps {
   currentStatus: OrderStatus;
@@ -112,7 +112,7 @@ const OrderStatusUpdate: React.FC<OrderStatusUpdateProps> = ({
             disabled={disabled}
           >
             <Icon
-              name={getStatusIcon(status)}
+              name={getStatusIcon(status) as any}
               size={20}
               color={status === 'cancelled' ? '#FF3B30' : '#007AFF'}
             />

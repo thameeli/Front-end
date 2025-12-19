@@ -56,7 +56,7 @@ const NotificationStatusDisplay: React.FC<NotificationStatusDisplayProps> = ({
 
   return (
     <View style={[styles.container, { backgroundColor: config.backgroundColor }, style]}>
-      <Icon name={config.icon} size={16} color={config.color} />
+      <Icon name={config.icon as any} size={16} color={config.color} />
       <Text style={[styles.label, { color: config.color }]}>{config.label}</Text>
     </View>
   );

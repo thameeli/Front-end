@@ -8,6 +8,7 @@ import { useAuthStore } from '../../store/authStore';
 import { userService } from '../../services';
 import { Button, Input, ErrorMessage, AppHeader, CountrySelector } from '../../components';
 import { profileUpdateSchema, validateForm } from '../../utils/validation';
+import { formatPhoneNumber } from '../../utils/regionalFormatting';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
 
@@ -88,15 +89,20 @@ const EditProfileScreen = () => {
 
         <Input
           label={t('auth.phone')}
-          placeholder={t('auth.phone')}
+          placeholder={country === COUNTRIES.GERMANY ? "+49 123 4567890" : "+45 12 34 56 78"}
           value={phone}
           onChangeText={(text) => {
-            setPhone(text);
+            // Format phone number as user types
+            const digits = text.replace(/\D/g, '');
+            const formatted = formatPhoneNumber(digits, country);
+            setPhone(formatted);
             if (errors.phone) setErrors({ ...errors, phone: '' });
           }}
           keyboardType="phone-pad"
           autoComplete="tel"
           error={errors.phone}
+          accessibilityLabel={`Phone number input for ${country === COUNTRIES.GERMANY ? 'Germany' : 'Denmark'}`}
+          accessibilityHint={`Enter phone number in ${country === COUNTRIES.GERMANY ? 'German' : 'Danish'} format`}
         />
 
         <CountrySelector

@@ -16,31 +16,64 @@ import Animated, {
 } from 'react-native-reanimated';
 import { colors } from '../theme';
 import { EASING, ANIMATION_DURATION } from '../utils/animations';
+import { classifyError, isOnline, retryWithBackoff } from '../utils/networkUtils';
 import Button from './Button';
 
 const AnimatedView = Animated.createAnimatedComponent(View);
 
 interface ErrorMessageProps {
   message: string;
-  onRetry?: () => void;
+  error?: any; // Original error object for classification
+  onRetry?: () => void | Promise<void>;
   onDismiss?: () => void;
   type?: 'error' | 'warning' | 'info' | 'network';
   style?: any;
   className?: string;
   showIcon?: boolean;
+  autoDetectType?: boolean; // Automatically detect error type
+  retryWithBackoff?: boolean; // Use exponential backoff for retries
 }
 
 const ErrorMessage: React.FC<ErrorMessageProps> = ({
   message,
+  error,
   onRetry,
   onDismiss,
-  type = 'error',
+  type: propType = 'error',
   style,
   className = '',
   showIcon = true,
+  autoDetectType = true,
+  retryWithBackoff: useBackoff = false,
 }) => {
   const { t } = useTranslation();
   const [retrying, setRetrying] = useState(false);
+  const [networkStatus, setNetworkStatus] = useState<boolean | null>(null);
+  
+  // Auto-detect error type if enabled
+  const detectedType = React.useMemo(() => {
+    if (!autoDetectType || !error) return propType;
+    const classification = classifyError(error);
+    return classification.type === 'network' ? 'network' : propType;
+  }, [autoDetectType, error, propType]);
+  
+  const type = detectedType;
+  
+  // Get user-friendly message
+  const userMessage = React.useMemo(() => {
+    if (error && autoDetectType) {
+      const classification = classifyError(error);
+      return classification.userMessage || message;
+    }
+    return message;
+  }, [error, autoDetectType, message]);
+  
+  // Check network status
+  useEffect(() => {
+    if (type === 'network' || autoDetectType) {
+      isOnline().then(setNetworkStatus);
+    }
+  }, [type, autoDetectType]);
 
   const scale = useSharedValue(0.9);
   const opacity = useSharedValue(0);
@@ -67,12 +100,29 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
     if (onRetry && !retrying) {
       setRetrying(true);
       try {
-        await onRetry();
+        if (useBackoff) {
+          await retryWithBackoff(async () => {
+            await onRetry();
+          });
+        } else {
+          await onRetry();
+        }
+      } catch (retryError) {
+        // Retry failed, error will be shown by parent component
+        console.warn('Retry failed:', retryError);
       } finally {
         setTimeout(() => setRetrying(false), 1000);
       }
     }
   };
+  
+  const isRetryable = React.useMemo(() => {
+    if (error && autoDetectType) {
+      const classification = classifyError(error);
+      return classification.isRetryable;
+    }
+    return !!onRetry;
+  }, [error, autoDetectType, onRetry]);
 
   const containerStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -128,15 +178,21 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
 
   return (
     <AnimatedView
-      style={[containerStyle, style]}
+      style={[
+        containerStyle,
+        {
+          backgroundColor: config.bgColor,
+          borderColor: config.borderColor,
+        },
+        style,
+      ]}
       className={`
         flex-row items-center p-4 rounded-xl border-2 mb-4
         ${className}
       `}
-      style={{
-        backgroundColor: config.bgColor,
-        borderColor: config.borderColor,
-      }}
+      accessibilityRole="alert"
+      accessibilityLabel={`${type} message: ${userMessage}`}
+      accessibilityLiveRegion="assertive"
     >
       {showIcon && (
         <AnimatedView style={iconStyle} className="mr-3">
@@ -153,24 +209,39 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
           className="text-base font-semibold mb-1"
           style={{ color: config.textColor }}
         >
-          {message}
+          {userMessage}
         </Text>
 
         {type === 'network' && (
-          <Text
-            className="text-sm mb-3"
-            style={{ color: config.textColor, opacity: 0.8 }}
-          >
-            {t('errors.checkConnection') || 'Please check your internet connection and try again.'}
-          </Text>
+          <View className="mb-3">
+            <Text
+              className="text-sm mb-1"
+              style={{ color: config.textColor, opacity: 0.8 }}
+            >
+              {networkStatus === false 
+                ? 'You appear to be offline. Please check your internet connection.'
+                : t('errors.checkConnection') || 'Please check your internet connection and try again.'}
+            </Text>
+            {networkStatus === false && (
+              <View className="flex-row items-center mt-1">
+                <Icon name="wifi-off" size={16} color={config.iconColor} />
+                <Text
+                  className="text-xs ml-1"
+                  style={{ color: config.textColor, opacity: 0.7 }}
+                >
+                  No internet connection detected
+                </Text>
+              </View>
+            )}
+          </View>
         )}
 
         <View className="flex-row gap-2 mt-2">
-          {onRetry && (
+          {isRetryable && onRetry && (
             <Button
               title={retrying ? (t('common.loading') || 'Loading...') : (t('errors.tryAgain') || 'Try Again')}
               onPress={handleRetry}
-              disabled={retrying}
+              disabled={retrying || networkStatus === false}
               loading={retrying}
               variant="outline"
               size="sm"
@@ -178,6 +249,8 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
                 borderColor: config.borderColor,
               }}
               textStyle={{ color: config.textColor }}
+              accessibilityLabel={retrying ? 'Retrying...' : 'Retry action'}
+              accessibilityHint={networkStatus === false ? 'Cannot retry while offline' : 'Double tap to retry'}
             />
           )}
           {onDismiss && (

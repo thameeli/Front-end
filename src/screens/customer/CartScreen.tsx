@@ -26,9 +26,14 @@ type CartScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Cart'>;
 const CartScreen = () => {
   const navigation = useNavigation<CartScreenNavigationProp>();
   const { t } = useTranslation();
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
+  const { selectedCountry } = useCartStore();
   const insets = useSafeAreaInsets();
-  const country = (user?.country_preference || COUNTRIES.GERMANY) as Country;
+  
+  // Use user's country preference if authenticated, otherwise use selected country from cart store
+  const country = (isAuthenticated && user?.country_preference) 
+    ? user.country_preference 
+    : (selectedCountry || COUNTRIES.GERMANY) as Country;
   
   // Calculate tab bar height to position button above it
   const tabBarHeight = Platform.OS === 'ios' ? 60 : 56;
@@ -247,10 +252,7 @@ const CartScreen = () => {
         animation="slide"
         delay={100}
         enterFrom="bottom"
-        style={[
-          styles.checkoutContainer,
-          { bottom: totalTabBarHeight }
-        ]}
+        style={[styles.checkoutContainer, { bottom: totalTabBarHeight }] as any}
       >
         <Button
           title={`→ Proceed to checkout • ${cartSummary.total}`}

@@ -9,11 +9,12 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
+  withSequence,
   interpolate,
 } from 'react-native-reanimated';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { colors } from '../theme';
-import { ANIMATION_DURATION, EASING } from '../utils/animations';
+import { ANIMATION_DURATION, EASING, MICRO_INTERACTIONS } from '../utils/animations';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -22,12 +23,15 @@ interface InputProps extends TextInputProps {
   leftIcon?: string;
   rightIcon?: string;
   floatingLabel?: boolean;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
+  accessibilityRole?: 'none' | 'text' | 'search' | 'none';
 }
 
 const AnimatedText = Animated.createAnimatedComponent(Text);
 const AnimatedView = Animated.createAnimatedComponent(View);
 
-const Input: React.FC<InputProps> = ({
+const Input = React.forwardRef<TextInput, InputProps>(({
   label,
   error,
   containerStyle,
@@ -38,8 +42,11 @@ const Input: React.FC<InputProps> = ({
   onFocus,
   onBlur,
   style,
+  accessibilityLabel,
+  accessibilityHint,
+  accessibilityRole = 'text',
   ...props
-}) => {
+}, ref) => {
   const [isFocused, setIsFocused] = useState(false);
   const hasValue = Boolean(value && value.toString().length > 0);
   const shouldFloat = floatingLabel && (isFocused || hasValue);
@@ -47,6 +54,7 @@ const Input: React.FC<InputProps> = ({
   const labelPosition = useSharedValue(hasValue ? 1 : 0);
   const labelScale = useSharedValue(hasValue ? 0.85 : 1);
   const borderColor = useSharedValue(error ? 1 : isFocused ? 0.5 : 0);
+  const shakeTranslateX = useSharedValue(0);
 
   React.useEffect(() => {
     labelPosition.value = withTiming(shouldFloat ? 1 : 0, {
@@ -64,6 +72,19 @@ const Input: React.FC<InputProps> = ({
       error ? 1 : isFocused ? 0.5 : 0,
       { duration: ANIMATION_DURATION.fast }
     );
+    
+    // Shake animation on error
+    if (error) {
+      shakeTranslateX.value = withSequence(
+        withTiming(-10, { duration: 50 }),
+        withTiming(10, { duration: 50 }),
+        withTiming(-10, { duration: 50 }),
+        withTiming(10, { duration: 50 }),
+        withTiming(0, { duration: 50 })
+      );
+    } else {
+      shakeTranslateX.value = 0;
+    }
   }, [isFocused, error]);
 
   const handleFocus = (e: any) => {
@@ -97,15 +118,16 @@ const Input: React.FC<InputProps> = ({
       [0, 1, 2] // 0: neutral, 1: primary, 2: error
     );
 
-    let borderColorValue = colors.neutral[300];
+    let borderColorValue: string = colors.neutral[300] as string;
     if (color >= 2) {
-      borderColorValue = colors.error[500];
+      borderColorValue = colors.error[500] as string;
     } else if (color >= 1) {
-      borderColorValue = colors.primary[500];
+      borderColorValue = colors.primary[500] as string;
     }
 
     return {
       borderColor: borderColorValue,
+      transform: [{ translateX: shakeTranslateX.value }],
     };
   });
 
@@ -147,6 +169,7 @@ const Input: React.FC<InputProps> = ({
           `}
         >
           <TextInput
+            ref={ref}
             className={`
               flex-1 py-3
               text-base text-neutral-900
@@ -158,6 +181,12 @@ const Input: React.FC<InputProps> = ({
             onFocus={handleFocus}
             onBlur={handleBlur}
             style={style}
+            accessibilityLabel={accessibilityLabel || label}
+            accessibilityHint={accessibilityHint || error}
+            accessibilityRole={accessibilityRole}
+            accessibilityState={{ 
+              disabled: props.editable === false,
+            }}
             {...props}
           />
 
@@ -176,6 +205,8 @@ const Input: React.FC<InputProps> = ({
       )}
     </View>
   );
-};
+});
+
+Input.displayName = 'Input';
 
 export default Input;

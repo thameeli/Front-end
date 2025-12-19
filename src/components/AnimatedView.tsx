@@ -151,11 +151,6 @@ const AnimatedView: React.FC<AnimatedViewProps> = ({
   };
 
   const Component = onPress ? TouchableOpacity : View;
-  
-  // Ensure Component has displayName
-  if (Component && !Component.displayName) {
-    Component.displayName = onPress ? 'AnimatedTouchableOpacity' : 'AnimatedView';
-  }
 
   return (
     <Component

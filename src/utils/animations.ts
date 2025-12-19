@@ -7,17 +7,20 @@
 // Use safe wrapper to prevent NullPointerException in Expo Go
 let withTimingFn: any;
 let withSpringFn: any;
+let withSequenceFn: any;
 let EasingObj: any;
 
 try {
   const Reanimated = require('react-native-reanimated');
   withTimingFn = Reanimated.withTiming;
   withSpringFn = Reanimated.withSpring;
+  withSequenceFn = Reanimated.withSequence;
   EasingObj = Reanimated.Easing;
 } catch (e) {
   // Fallbacks if reanimated not available
   withTimingFn = (value: any) => value;
   withSpringFn = (value: any) => value;
+  withSequenceFn = (...args: any[]) => args[args.length - 1];
   EasingObj = {
     linear: (t: number) => t,
     ease: (t: number) => t,
@@ -29,6 +32,7 @@ try {
 
 const withTiming = withTimingFn;
 const withSpring = withSpringFn;
+const withSequence = withSequenceFn;
 const Easing = EasingObj;
 type SharedValue = any;
 
@@ -181,5 +185,178 @@ export const createShimmer = () => {
     duration: 1000,
     easing: EASING.easeInOut,
   });
+};
+
+/**
+ * Page transition animations
+ */
+export const PAGE_TRANSITIONS = {
+  // Slide from right (default iOS)
+  slideFromRight: {
+    cardStyleInterpolator: ({ current, layouts }: any) => {
+      return {
+        cardStyle: {
+          transform: [
+            {
+              translateX: current.progress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [layouts.screen.width, 0],
+              }),
+            },
+          ],
+        },
+      };
+    },
+  },
+  // Slide from bottom (modal)
+  slideFromBottom: {
+    cardStyleInterpolator: ({ current }: any) => {
+      return {
+        cardStyle: {
+          transform: [
+            {
+              translateY: current.progress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [500, 0],
+              }),
+            },
+          ],
+        },
+      };
+    },
+  },
+  // Fade transition
+  fade: {
+    cardStyleInterpolator: ({ current }: any) => {
+      return {
+        cardStyle: {
+          opacity: current.progress,
+        },
+      };
+    },
+  },
+  // Scale transition
+  scale: {
+    cardStyleInterpolator: ({ current }: any) => {
+      return {
+        cardStyle: {
+          transform: [
+            {
+              scale: current.progress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.9, 1],
+              }),
+            },
+          ],
+          opacity: current.progress,
+        },
+      };
+    },
+  },
+};
+
+/**
+ * Micro-interaction animations
+ */
+export const MICRO_INTERACTIONS = {
+  // Bounce animation for success
+  bounce: (scale: number = 1.1) => {
+    return withSpring(scale, {
+      damping: 8,
+      stiffness: 300,
+      mass: 0.5,
+    });
+  },
+  // Pulse animation
+  pulse: () => {
+    return withTiming(1.05, {
+      duration: 200,
+      easing: EASING.easeOut,
+    });
+  },
+  // Shake animation for errors
+  shake: (translateX: SharedValue) => {
+    return withSequence(
+      withTiming(-10, { duration: 50 }),
+      withTiming(10, { duration: 50 }),
+      withTiming(-10, { duration: 50 }),
+      withTiming(10, { duration: 50 }),
+      withTiming(0, { duration: 50 })
+    );
+  },
+  // Heart/like animation
+  heartBeat: (scale: SharedValue) => {
+    return withSequence(
+      withSpring(1.3, { damping: 5, stiffness: 400 }),
+      withSpring(1, EASING.spring)
+    );
+  },
+  // Ripple effect
+  ripple: (opacity: SharedValue, scale: SharedValue) => {
+    return withTiming(0, {
+      duration: 400,
+      easing: EASING.easeOut,
+    });
+  },
+};
+
+/**
+ * Loading animations
+ */
+export const LOADING_ANIMATIONS = {
+  // Spinner rotation
+  spinner: (rotation: SharedValue) => {
+    return withTiming(360, {
+      duration: 1000,
+      easing: EASING.linear,
+    });
+  },
+  // Skeleton shimmer
+  shimmer: (translateX: SharedValue) => {
+    return withTiming(300, {
+      duration: 1500,
+      easing: EASING.easeInOut,
+    });
+  },
+  // Progress bar
+  progress: (progress: SharedValue, toValue: number) => {
+    return withTiming(toValue, {
+      duration: 500,
+      easing: EASING.easeOut,
+    });
+  },
+};
+
+/**
+ * Card interaction animations
+ */
+export const CARD_ANIMATIONS = {
+  // Lift on press
+  lift: {
+    pressed: {
+      transform: [{ translateY: -4 }, { scale: 0.98 }],
+      shadowOpacity: 0.3,
+    },
+    default: {
+      transform: [{ translateY: 0 }, { scale: 1 }],
+      shadowOpacity: 0.1,
+    },
+  },
+  // Tilt on press
+  tilt: {
+    pressed: {
+      transform: [{ rotate: '1deg' }, { scale: 0.98 }],
+    },
+    default: {
+      transform: [{ rotate: '0deg' }, { scale: 1 }],
+    },
+  },
+  // Glow effect
+  glow: (opacity: SharedValue) => {
+    return withSequence(
+      withTiming(0.8, { duration: 300 }),
+      withTiming(0.3, { duration: 300 })
+    );
+  },
 };
 

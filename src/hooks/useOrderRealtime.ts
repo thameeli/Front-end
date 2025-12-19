@@ -28,7 +28,7 @@ export const useOrderRealtime = (userId: string) => {
           table: 'orders',
           filter: `user_id=eq.${userId}`,
         },
-        (payload) => {
+        (payload: any) => {
           console.log('Order update received:', payload);
 
           // Invalidate and refetch orders
