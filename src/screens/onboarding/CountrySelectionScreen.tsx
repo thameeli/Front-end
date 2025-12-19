@@ -17,6 +17,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useCartStore } from '../../store/cartStore';
 import Button from '../../components/Button';
 import { mediumHaptic } from '../../utils/hapticFeedback';
+import { isSmallDevice, isTablet, getResponsivePadding, getResponsiveFontSize } from '../../utils/responsive';
 
 // Safe import of reanimated with fallback
 let Animated: any;
@@ -58,6 +59,7 @@ const CountrySelectionScreen = () => {
   const navigation = useNavigation<CountrySelectionScreenNavigationProp>();
   const { updateCountryPreference, user, isAuthenticated } = useAuthStore();
   const { selectedCountry: cartCountry, setSelectedCountry: setCartCountry } = useCartStore();
+  const padding = getResponsivePadding();
   
   // Use user's country preference if authenticated, otherwise use cart store
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(
@@ -164,7 +166,7 @@ const CountrySelectionScreen = () => {
 
   return (
     <AnimatedView style={[styles.container, containerStyle]}>
-      <AnimatedView style={[styles.header, titleStyle]}>
+      <AnimatedView style={[styles.header, titleStyle, { paddingHorizontal: padding.horizontal }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backButton}
@@ -179,7 +181,7 @@ const CountrySelectionScreen = () => {
         </Text>
       </AnimatedView>
 
-      <AnimatedView style={[styles.cardsContainer, cardsStyle]}>
+      <AnimatedView style={[styles.cardsContainer, cardsStyle, { paddingHorizontal: padding.horizontal }]}>
         {countries.map((country, index) => {
           const isSelected = selectedCountry === country.key;
 
@@ -217,7 +219,7 @@ const CountrySelectionScreen = () => {
         })}
       </AnimatedView>
 
-      <AnimatedView style={[styles.buttonContainer, buttonStyle]}>
+      <AnimatedView style={[styles.buttonContainer, buttonStyle, { paddingHorizontal: padding.horizontal, paddingBottom: padding.vertical * 2, paddingTop: padding.vertical }]}>
         <Button
           title="Continue"
           onPress={handleContinue}
@@ -238,7 +240,6 @@ const styles = StyleSheet.create({
     paddingTop: 60,
   },
   header: {
-    paddingHorizontal: 24,
     marginBottom: 32,
   },
   backButton: {
@@ -249,19 +250,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
-    fontSize: 28,
+    fontSize: getResponsiveFontSize(28),
     fontWeight: 'bold',
     color: colors.neutral[900],
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     color: colors.neutral[600],
     lineHeight: 24,
   },
   cardsContainer: {
     flex: 1,
-    paddingHorizontal: 24,
     gap: 16,
   },
   countryCard: {
@@ -293,22 +293,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   countryName: {
-    fontSize: 18,
+    fontSize: getResponsiveFontSize(18),
     fontWeight: '600',
     color: colors.neutral[900],
     marginBottom: 4,
   },
   countryDescription: {
-    fontSize: 14,
+    fontSize: getResponsiveFontSize(14),
     color: colors.neutral[600],
   },
   checkContainer: {
     marginLeft: 12,
   },
   buttonContainer: {
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-    paddingTop: 16,
     backgroundColor: 'white',
     borderTopWidth: 1,
     borderTopColor: colors.neutral[200],

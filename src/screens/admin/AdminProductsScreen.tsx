@@ -3,8 +3,8 @@
  * Uses NativeWind for styling and Phase 2 components
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert, StyleSheet, Platform } from 'react-native';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { View, Text, FlatList, TouchableOpacity, Alert, StyleSheet, Platform, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -34,6 +34,12 @@ import { COUNTRIES, PRODUCT_CATEGORIES } from '../../constants';
 import type { Country } from '../../constants';
 import type { ProductCategory } from '../../types';
 import { colors } from '../../theme';
+import {
+  isSmallDevice,
+  isTablet,
+  isLandscape,
+  getResponsivePadding,
+} from '../../utils/responsive';
 
 type AdminProductsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AdminProducts'>;
 
@@ -43,6 +49,21 @@ const AdminProductsScreen = () => {
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const country = (user?.country_preference || COUNTRIES.GERMANY) as Country;
+  
+  // Responsive dimensions
+  const [screenData, setScreenData] = useState(Dimensions.get('window'));
+  const isSmall = isSmallDevice();
+  const isTabletDevice = isTablet();
+  const isLandscapeMode = isLandscape();
+  const padding = getResponsivePadding();
+  
+  // Update dimensions on orientation change
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenData(window);
+    });
+    return () => subscription?.remove();
+  }, []);
   
   // Calculate tab bar height to position button above it
   const tabBarHeight = Platform.OS === 'ios' ? 60 : 56;
@@ -301,10 +322,18 @@ const AdminProductsScreen = () => {
         animation="slide"
         delay={0}
         enterFrom="bottom"
-        style={[styles.stickyContainer, { bottom: totalTabBarHeight }] as any}
+        style={[
+          styles.stickyContainer,
+          {
+            bottom: totalTabBarHeight,
+            paddingHorizontal: padding.horizontal,
+            maxWidth: isTabletDevice && !isLandscapeMode ? 600 : '100%',
+            alignSelf: isTabletDevice && !isLandscapeMode ? 'center' : 'stretch',
+          }
+        ] as any}
       >
         <Button
-          title="Add New Product"
+          title={isSmall ? "Add Product" : "Add New Product"}
           onPress={handleAddProduct}
           fullWidth
           size="lg"
@@ -323,7 +352,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#E5E5E5',
-    paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 12,
     shadowColor: '#000',
@@ -331,6 +359,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 8,
+    // paddingHorizontal is set dynamically
   },
 });
 

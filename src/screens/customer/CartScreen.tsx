@@ -3,8 +3,8 @@
  * Uses StyleSheet instead of className for better NativeWind compatibility
  */
 
-import React, { useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, Alert, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, ScrollView, Alert, TouchableOpacity, StyleSheet, Platform, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +20,13 @@ import { validateCart, updateCartWithProductData } from '../../utils/cartValidat
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
 import { colors } from '../../theme';
+import {
+  isSmallDevice,
+  isTablet,
+  isLandscape,
+  getResponsivePadding,
+  getResponsiveFontSize,
+} from '../../utils/responsive';
 
 type CartScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Cart'>;
 
@@ -34,6 +41,21 @@ const CartScreen = () => {
   const country = (isAuthenticated && user?.country_preference) 
     ? user.country_preference 
     : (selectedCountry || COUNTRIES.GERMANY) as Country;
+  
+  // Responsive dimensions
+  const [screenData, setScreenData] = useState(Dimensions.get('window'));
+  const isSmall = isSmallDevice();
+  const isTabletDevice = isTablet();
+  const isLandscapeMode = isLandscape();
+  const padding = getResponsivePadding();
+  
+  // Update dimensions on orientation change
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenData(window);
+    });
+    return () => subscription?.remove();
+  }, []);
   
   // Calculate tab bar height to position button above it
   const tabBarHeight = Platform.OS === 'ios' ? 60 : 56;
@@ -173,10 +195,21 @@ const CartScreen = () => {
       
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: totalTabBarHeight + (isTabletDevice ? 120 : 100) }
+        ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.content}>
+        <View style={[
+          styles.content,
+          {
+            paddingHorizontal: padding.horizontal,
+            paddingTop: padding.vertical,
+            maxWidth: isTabletDevice && !isLandscapeMode ? 600 : '100%',
+            alignSelf: isTabletDevice && !isLandscapeMode ? 'center' : 'stretch',
+          }
+        ]}>
           {!cartValidation.isValid && (
             <AnimatedView animation="fade" delay={0}>
               <Card elevation="raised" style={styles.warningCard}>
@@ -216,7 +249,10 @@ const CartScreen = () => {
           {/* Order Summary */}
           <AnimatedView animation="slide" delay={items.length * 50} enterFrom="bottom">
             <Card elevation="raised" style={styles.summaryCard}>
-              <Text style={styles.summaryTitle}>
+              <Text style={[
+                styles.summaryTitle,
+                { fontSize: getResponsiveFontSize(18, 16, 20) }
+              ]}>
                 Order Summary
               </Text>
               
@@ -252,10 +288,22 @@ const CartScreen = () => {
         animation="slide"
         delay={100}
         enterFrom="bottom"
-        style={[styles.checkoutContainer, { bottom: totalTabBarHeight }] as any}
+        style={[
+          styles.checkoutContainer,
+          {
+            bottom: totalTabBarHeight,
+            paddingHorizontal: padding.horizontal,
+            maxWidth: isTabletDevice && !isLandscapeMode ? 600 : '100%',
+            alignSelf: isTabletDevice && !isLandscapeMode ? 'center' : 'stretch',
+          }
+        ] as any}
       >
         <Button
-          title={`→ Proceed to checkout • ${cartSummary.total}`}
+          title={
+            isSmall
+              ? `Checkout • ${cartSummary.total}`
+              : `→ Proceed to checkout • ${cartSummary.total}`
+          }
           onPress={handleCheckout}
           disabled={!cartValidation.isValid}
           fullWidth
@@ -278,8 +326,7 @@ const styles = StyleSheet.create({
     paddingBottom: 180, // Increased to account for button + tab bar
   },
   content: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    // paddingHorizontal and paddingTop will be set dynamically
   },
   warningCard: {
     marginBottom: 16,
@@ -311,7 +358,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   summaryTitle: {
-    fontSize: 18,
+    // fontSize will be set dynamically
     fontWeight: 'bold',
     color: colors.neutral[900],
     marginBottom: 16,
@@ -364,7 +411,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: colors.neutral[200],
-    paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 12,
     shadowColor: '#000',
@@ -372,6 +418,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 8,
+    // paddingHorizontal is set dynamically
   },
 });
 

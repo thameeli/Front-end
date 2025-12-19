@@ -7,6 +7,7 @@ import { RootStackParamList } from '../../types';
 import { useAuthStore } from '../../store/authStore';
 import { Button, Input, ErrorMessage, AppHeader } from '../../components';
 import { passwordChangeSchema, validateForm } from '../../utils/validation';
+import { isTablet, getResponsivePadding } from '../../utils/responsive';
 
 type ChangePasswordScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Settings'>;
 
@@ -20,6 +21,7 @@ const ChangePasswordScreen = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [apiError, setApiError] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const padding = getResponsivePadding();
 
   const handleChangePassword = async () => {
     setErrors({});
@@ -52,7 +54,14 @@ const ChangePasswordScreen = () => {
   return (
     <View style={styles.container}>
       <AppHeader title="Change Password" showBack />
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={{ 
+          padding: padding.vertical,
+          maxWidth: isTablet ? 600 : '100%',
+          alignSelf: isTablet ? 'center' : 'stretch',
+        }}
+      >
         {apiError && (
           <ErrorMessage
             message={apiError}
@@ -124,7 +133,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 20,
   },
   changeButton: {
     marginTop: 8,

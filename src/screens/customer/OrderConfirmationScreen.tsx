@@ -13,6 +13,7 @@ import { AppHeader, OrderReceipt, Button, LoadingScreen, ErrorMessage, SuccessCe
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
 import type { OrderItem } from '../../types';
+import { isTablet, isSmallDevice, getResponsivePadding } from '../../utils/responsive';
 
 type OrderConfirmationScreenRouteProp = RouteProp<RootStackParamList, 'OrderConfirmation'>;
 type OrderConfirmationScreenNavigationProp = StackNavigationProp<RootStackParamList, 'OrderConfirmation'>;
@@ -24,6 +25,7 @@ const OrderConfirmationScreen = () => {
   const { user, isAuthenticated } = useAuthStore();
   const { selectedCountry } = useCartStore();
   const { orderId } = route.params;
+  const padding = getResponsivePadding();
   
   // Use user's country preference if authenticated, otherwise use selected country from cart store
   const country = (isAuthenticated && user?.country_preference) 
@@ -83,7 +85,14 @@ const OrderConfirmationScreen = () => {
         duration={2500}
       />
       
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={{ 
+          padding: padding.vertical,
+          maxWidth: isTablet ? 600 : '100%',
+          alignSelf: isTablet ? 'center' : 'stretch',
+        }}
+      >
         <OrderReceipt
           order={order}
           orderItems={enrichedOrderItems}
@@ -91,7 +100,7 @@ const OrderConfirmationScreen = () => {
         />
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { padding: padding.vertical }]}>
         <Button
           title="View Orders"
           onPress={() => navigation.navigate('Orders')}
@@ -119,7 +128,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   footer: {
-    padding: 16,
+    // padding will be set dynamically
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',

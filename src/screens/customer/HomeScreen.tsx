@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert, RefreshControl } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Alert, RefreshControl, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -23,6 +23,12 @@ import { COUNTRIES, PRODUCT_CATEGORIES } from '../../constants';
 import type { ProductCategory } from '../../types';
 import type { Country } from '../../constants';
 import { colors } from '../../theme';
+import {
+  isSmallDevice,
+  isTablet,
+  getColumnCount,
+  getResponsivePadding,
+} from '../../utils/responsive';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'> | BottomTabNavigationProp<any>;
 
@@ -46,6 +52,25 @@ const HomeScreen = () => {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory | 'all'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'price_asc' | 'price_desc'>('name');
+  
+  // Responsive dimensions
+  const [screenData, setScreenData] = useState(Dimensions.get('window'));
+  const isSmall = isSmallDevice();
+  const isTabletDevice = isTablet();
+  const numColumns = useMemo(() => {
+    if (isSmall) return 1;
+    if (isTabletDevice) return 3;
+    return 2;
+  }, [isSmall, isTabletDevice]);
+  const padding = getResponsivePadding();
+  
+  // Update dimensions on orientation change
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenData(window);
+    });
+    return () => subscription?.remove();
+  }, []);
 
   // Debounce search query
   const debouncedSearch = useMemo(
@@ -420,7 +445,7 @@ const HomeScreen = () => {
         <FlatList
           data={filteredProducts}
           keyExtractor={keyExtractor}
-          numColumns={2}
+          numColumns={numColumns}
           renderItem={renderProductItem}
           ListHeaderComponent={renderHeader}
           contentContainerStyle={{ paddingBottom: 16 }}
@@ -433,11 +458,11 @@ const HomeScreen = () => {
           updateCellsBatchingPeriod={50}
           initialNumToRender={10}
           windowSize={10}
-          getItemLayout={(data, index) => ({
+          getItemLayout={numColumns > 1 ? (data, index) => ({
             length: 250, // Approximate item height
-            offset: 250 * Math.floor(index / 2),
+            offset: 250 * Math.floor(index / numColumns),
             index,
-          })}
+          }) : undefined}
         />
       )}
     </View>

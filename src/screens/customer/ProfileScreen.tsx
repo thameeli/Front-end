@@ -17,6 +17,7 @@ import { formatPhoneNumber } from '../../utils/regionalFormatting';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
 import { colors } from '../../theme';
+import { isTablet, getResponsivePadding, getResponsiveFontSize } from '../../utils/responsive';
 
 type ProfileScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Profile'>;
 
@@ -24,6 +25,7 @@ const ProfileScreen = () => {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
   const { t } = useTranslation();
   const { user, logout, updateCountryPreference } = useAuthStore();
+  const padding = getResponsivePadding();
 
   const handleLogout = async () => {
     Alert.alert(
@@ -74,13 +76,13 @@ const ProfileScreen = () => {
         <AnimatedView animation="fade" delay={0}>
           <LinearGradient
             colors={[colors.primary[500], colors.primary[600]]}
-            className="px-6 pt-8 pb-12"
+            style={{ paddingHorizontal: padding.horizontal, paddingTop: padding.vertical * 1.5, paddingBottom: padding.vertical * 2 }}
           >
             <View className="items-center">
               <View className="w-24 h-24 rounded-full bg-white/20 justify-center items-center mb-4 border-4 border-white/30">
                 <Icon name="account-circle" size={64} color="white" />
               </View>
-              <Text className="text-2xl font-bold text-white mb-2">
+              <Text style={{ fontSize: getResponsiveFontSize(24), fontWeight: 'bold', color: 'white', marginBottom: 8 }}>
                 {user.name || user.email}
               </Text>
               <View className="flex-row items-center gap-2">
@@ -96,8 +98,8 @@ const ProfileScreen = () => {
         </AnimatedView>
 
         {/* Profile Information */}
-        <AnimatedView animation="slide" delay={100} enterFrom="bottom" className="px-4 -mt-6">
-          <Card elevation="raised" className="p-6 mb-4">
+        <AnimatedView animation="slide" delay={100} enterFrom="bottom" style={{ paddingHorizontal: padding.horizontal, marginTop: -24 }}>
+          <Card elevation="raised" style={{ padding: padding.vertical * 1.5, marginBottom: padding.vertical }}>
             <Text className="text-lg font-bold text-neutral-900 mb-4">
               {t('profile.information') || 'Information'}
             </Text>
@@ -169,7 +171,7 @@ const ProfileScreen = () => {
           </Card>
 
           {/* Country Preference */}
-          <Card elevation="raised" className="p-6 mb-4">
+          <Card elevation="raised" style={{ padding: padding.vertical * 1.5, marginBottom: padding.vertical }}>
             <Text className="text-lg font-bold text-neutral-900 mb-4">
               {t('profile.countryPreference') || 'Country Preference'}
             </Text>

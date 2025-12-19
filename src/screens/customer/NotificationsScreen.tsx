@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { RootStackParamList, Notification } from '../../types';
 import { useAuthStore } from '../../store/authStore';
 import { useCartStore } from '../../store/cartStore';
@@ -17,6 +16,9 @@ import {
   ErrorMessage,
   Button,
 } from '../../components';
+import { COUNTRIES } from '../../constants';
+import type { Country } from '../../constants';
+import { isTablet, getResponsivePadding } from '../../utils/responsive';
 
 type NotificationsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Notifications'>;
 
@@ -25,6 +27,7 @@ const NotificationsScreen = () => {
   const { user, isAuthenticated } = useAuthStore();
   const { selectedCountry } = useCartStore();
   const queryClient = useQueryClient();
+  const padding = getResponsivePadding();
   
   // Use user's country preference if authenticated, otherwise use selected country from cart store
   const country = (isAuthenticated && user?.country_preference) 
@@ -116,7 +119,7 @@ const NotificationsScreen = () => {
       ) : (
         <>
           {unreadCount > 0 && (
-            <View style={styles.headerActions}>
+            <View style={[styles.headerActions, { paddingHorizontal: padding.horizontal, paddingBottom: padding.vertical * 0.5 }]}>
               <Button
                 title={`Mark all as read (${unreadCount})`}
                 onPress={handleMarkAllAsRead}
@@ -141,7 +144,15 @@ const NotificationsScreen = () => {
                 onMarkAsRead={() => handleMarkAsRead(item.id)}
               />
             ), [country, handleMarkAsRead])}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[
+              styles.listContent,
+              { 
+                padding: padding.vertical,
+                paddingTop: unreadCount > 0 ? padding.vertical * 0.5 : padding.vertical,
+                maxWidth: isTablet ? 600 : '100%',
+                alignSelf: isTablet ? 'center' : 'stretch',
+              }
+            ]}
             refreshControl={
               <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
             }
@@ -168,15 +179,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   headerActions: {
-    padding: 16,
-    paddingBottom: 8,
+    // padding will be set dynamically
   },
   markAllButton: {
     marginBottom: 0,
   },
   listContent: {
-    padding: 16,
-    paddingTop: 8,
+    // padding will be set dynamically
   },
 });
 

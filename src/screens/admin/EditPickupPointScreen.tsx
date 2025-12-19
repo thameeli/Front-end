@@ -9,6 +9,7 @@ import { pickupPointService } from '../../services';
 import { AppHeader, Input, Button, ErrorMessage, LoadingScreen, CountrySelector } from '../../components';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
+import { isTablet, isSmallDevice, getResponsivePadding } from '../../utils/responsive';
 
 type EditPickupPointScreenRouteProp = RouteProp<RootStackParamList, 'EditPickupPoint'>;
 type EditPickupPointScreenNavigationProp = StackNavigationProp<RootStackParamList, 'EditPickupPoint'>;
@@ -18,6 +19,7 @@ const EditPickupPointScreen = () => {
   const navigation = useNavigation<EditPickupPointScreenNavigationProp>();
   const queryClient = useQueryClient();
   const { pickupPointId } = route.params;
+  const padding = getResponsivePadding();
 
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
@@ -111,7 +113,14 @@ const EditPickupPointScreen = () => {
   return (
     <View style={styles.container}>
       <AppHeader title="Edit Pickup Point" showBack />
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={{ 
+          padding: padding.vertical,
+          maxWidth: isTablet ? 600 : '100%',
+          alignSelf: isTablet ? 'center' : 'stretch',
+        }}
+      >
         {Object.keys(errors).length > 0 && (
           <ErrorMessage
             message="Please fix the errors below"
@@ -231,7 +240,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 16,
   },
   errorMessage: {
     marginBottom: 16,
@@ -249,7 +257,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   coordinatesRow: {
-    flexDirection: 'row',
+    flexDirection: isSmallDevice ? 'column' : 'row',
     gap: 12,
   },
   halfWidth: {

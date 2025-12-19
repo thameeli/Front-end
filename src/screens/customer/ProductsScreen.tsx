@@ -3,8 +3,8 @@
  * Uses NativeWind for styling and Phase 2 components
  */
 
-import React, { useState, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { View, Text, FlatList, TouchableOpacity, RefreshControl, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +20,12 @@ import { COUNTRIES, PRODUCT_CATEGORIES } from '../../constants';
 import type { ProductCategory } from '../../types';
 import type { Country } from '../../constants';
 import { colors } from '../../theme';
+import {
+  isSmallDevice,
+  isTablet,
+  getColumnCount,
+  getResponsivePadding,
+} from '../../utils/responsive';
 
 type ProductsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Products'>;
 
@@ -39,6 +45,26 @@ const ProductsScreen = () => {
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory | 'all'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'price_asc' | 'price_desc'>('name');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  
+  // Responsive dimensions
+  const [screenData, setScreenData] = useState(Dimensions.get('window'));
+  const isSmall = isSmallDevice();
+  const isTabletDevice = isTablet();
+  const numColumns = useMemo(() => {
+    if (viewMode === 'list') return 1;
+    if (isSmall) return 1;
+    if (isTabletDevice) return 3;
+    return 2;
+  }, [viewMode, isSmall, isTabletDevice]);
+  const padding = getResponsivePadding();
+  
+  // Update dimensions on orientation change
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenData(window);
+    });
+    return () => subscription?.remove();
+  }, []);
 
   // Debounce search query
   const debouncedSearch = useMemo(
@@ -199,7 +225,7 @@ const ProductsScreen = () => {
         <FlatList
           data={filteredProducts}
           keyExtractor={keyExtractor}
-          numColumns={2}
+          numColumns={numColumns}
           ListHeaderComponent={renderHeader}
           renderItem={renderGridItem}
           contentContainerStyle={{ paddingBottom: 16 }}
@@ -212,23 +238,23 @@ const ProductsScreen = () => {
           updateCellsBatchingPeriod={50}
           initialNumToRender={10}
           windowSize={10}
-          getItemLayout={(data, index) => ({
+          getItemLayout={numColumns > 1 ? (data, index) => ({
             length: 250, // Approximate item height
-            offset: 250 * Math.floor(index / 2),
+            offset: 250 * Math.floor(index / numColumns),
             index,
-          })}
+          }) : undefined}
         />
       </View>
     );
   }
 
-  // List View - also shows 2 columns
+  // List View - single column
   return (
     <View className="flex-1 bg-neutral-50">
       <FlatList
         data={filteredProducts}
         keyExtractor={keyExtractor}
-        numColumns={2}
+        numColumns={1}
         ListHeaderComponent={renderHeader}
         renderItem={renderGridItem}
         contentContainerStyle={{ paddingBottom: 16 }}
@@ -241,11 +267,6 @@ const ProductsScreen = () => {
         updateCellsBatchingPeriod={50}
         initialNumToRender={10}
         windowSize={10}
-        getItemLayout={(data, index) => ({
-          length: 250, // Approximate item height
-          offset: 250 * Math.floor(index / 2),
-          index,
-        })}
       />
     </View>
   );

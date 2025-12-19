@@ -9,6 +9,7 @@ import { RootStackParamList, ProductCategory } from '../../types';
 import { productService } from '../../services/productService';
 import { AppHeader, Input, Button, ErrorMessage, LoadingScreen } from '../../components';
 import { PRODUCT_CATEGORIES } from '../../constants';
+import { isTablet, isSmallDevice, getResponsivePadding } from '../../utils/responsive';
 // Lazy import to avoid module-level initialization issues
 let ImagePicker: any = null;
 const getImagePicker = async () => {
@@ -26,6 +27,7 @@ const EditProductScreen = () => {
   const navigation = useNavigation<EditProductScreenNavigationProp>();
   const queryClient = useQueryClient();
   const { productId } = route.params;
+  const padding = getResponsivePadding();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -166,7 +168,14 @@ const EditProductScreen = () => {
   return (
     <View style={styles.container}>
       <AppHeader title="Edit Product" showBack />
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={{ 
+          padding: padding.vertical,
+          maxWidth: isTablet ? 600 : '100%',
+          alignSelf: isTablet ? 'center' : 'stretch',
+        }}
+      >
         {Object.keys(errors).length > 0 && (
           <ErrorMessage
             message="Please fix the errors below"
@@ -323,7 +332,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 16,
   },
   errorMessage: {
     marginBottom: 16,
@@ -364,7 +372,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   priceRow: {
-    flexDirection: 'row',
+    flexDirection: isSmallDevice ? 'column' : 'row',
     gap: 12,
     marginBottom: 16,
   },

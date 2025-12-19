@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, Alert, TouchableOpacity, StyleSheet, Platform, Linking } from 'react-native';
+import { View, Text, ScrollView, Alert, TouchableOpacity, StyleSheet, Platform, Linking, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -38,6 +38,15 @@ import { validateCart } from '../../utils/cartValidation';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
 import { colors } from '../../theme';
+import {
+  isSmallDevice,
+  isTablet,
+  isLandscape,
+  getScreenWidth,
+  getResponsivePadding,
+  getResponsiveFontSize,
+  MIN_TOUCH_TARGET,
+} from '../../utils/responsive';
 
 type CheckoutScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Checkout'>;
 
@@ -54,6 +63,23 @@ const CheckoutScreen = () => {
     ? user.country_preference 
     : (selectedCountry || COUNTRIES.GERMANY) as Country;
   const insets = useSafeAreaInsets();
+  
+  // Responsive dimensions
+  const [screenData, setScreenData] = useState(Dimensions.get('window'));
+  const screenWidth = screenData.width;
+  const screenHeight = screenData.height;
+  const isSmall = isSmallDevice();
+  const isTabletDevice = isTablet();
+  const isLandscapeMode = isLandscape();
+  const padding = getResponsivePadding();
+  
+  // Update dimensions on orientation change
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenData(window);
+    });
+    return () => subscription?.remove();
+  }, []);
   
   // Calculate tab bar height to position sticky button above it
   const tabBarHeight = Platform.OS === 'ios' ? 60 : 56;
@@ -357,61 +383,107 @@ const CheckoutScreen = () => {
     );
   }
 
-  const renderStepIndicator = () => (
-    <View className="px-4 pt-4 pb-2 bg-white">
-      <View className="flex-row items-center justify-between mb-4">
-        {steps.map((step, index) => {
-          const isActive = step.key === currentStep;
-          const isCompleted = getCurrentStepIndex() > index;
-          const isAccessible = getCurrentStepIndex() >= index;
+  const renderStepIndicator = () => {
+    // On small screens, show only icons for non-active steps
+    // On tablets, show full labels with more spacing
+    const showLabels = !isSmall || isTabletDevice;
+    const iconSize = isSmall ? 18 : isTabletDevice ? 24 : 20;
+    const stepIconSize = isSmall ? 8 : isTabletDevice ? 12 : 10;
+    const stepLabelFontSize = getResponsiveFontSize(isSmall ? 9 : isTabletDevice ? 14 : 12, 9, 14);
 
-          return (
-            <TouchableOpacity
-              key={step.key}
-              onPress={() => isAccessible && setCurrentStep(step.key)}
-              disabled={!isAccessible}
-              className="flex-1 items-center"
-            >
-              <View
-                className={`
-                  w-10 h-10 rounded-full items-center justify-center mb-2
-                  ${isCompleted ? 'bg-success-500' : isActive ? 'bg-primary-500' : 'bg-neutral-200'}
-                `}
+    return (
+      <View style={{ paddingHorizontal: padding.horizontal, paddingTop: padding.vertical, paddingBottom: 8, backgroundColor: '#fff' }}>
+        <View 
+          className={`flex-row items-center ${isTabletDevice ? 'justify-around' : 'justify-between'} mb-4`}
+          style={{ gap: isSmall ? 4 : isTabletDevice ? 16 : 8 }}
+        >
+          {steps.map((step, index) => {
+            const isActive = step.key === currentStep;
+            const isCompleted = getCurrentStepIndex() > index;
+            const isAccessible = getCurrentStepIndex() >= index;
+            const shouldShowLabel = showLabels || isActive || isCompleted;
+
+            return (
+              <TouchableOpacity
+                key={step.key}
+                onPress={() => isAccessible && setCurrentStep(step.key)}
+                disabled={!isAccessible}
+                className="flex-1 items-center"
+                style={{ minWidth: MIN_TOUCH_TARGET }}
+                accessibilityLabel={`Step ${index + 1}: ${step.label}`}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isActive, disabled: !isAccessible }}
               >
-                <Icon
-                  name={isCompleted ? 'check' : (step.icon as any)}
-                  size={20}
-                  color={isCompleted || isActive ? 'white' : colors.neutral[500]}
-                />
-              </View>
-              <Text
-                className={`
-                  text-xs font-medium text-center
-                  ${isActive ? 'text-primary-500' : isCompleted ? 'text-success-500' : 'text-neutral-400'}
-                `}
-              >
-                {step.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+                <View
+                  style={{
+                    width: isTabletDevice ? 48 : isSmall ? 32 : 40,
+                    height: isTabletDevice ? 48 : isSmall ? 32 : 40,
+                    borderRadius: isTabletDevice ? 24 : isSmall ? 16 : 20,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: shouldShowLabel ? 8 : 0,
+                    backgroundColor: isCompleted 
+                      ? colors.success?.[500] || '#10b981' 
+                      : isActive 
+                      ? colors.primary?.[500] || '#007AFF' 
+                      : colors.neutral?.[200] || '#e5e5e5',
+                  }}
+                >
+                  <Icon
+                    name={isCompleted ? 'check' : (step.icon as any)}
+                    size={iconSize}
+                    color={isCompleted || isActive ? 'white' : colors.neutral[500]}
+                  />
+                </View>
+                {shouldShowLabel && (
+                  <Text
+                    style={{
+                      fontSize: stepLabelFontSize,
+                      fontWeight: isActive ? '600' : '500',
+                      textAlign: 'center',
+                      color: isActive 
+                        ? colors.primary?.[500] || '#007AFF' 
+                        : isCompleted 
+                        ? colors.success?.[500] || '#10b981' 
+                        : colors.neutral?.[400] || '#a3a3a3',
+                      maxWidth: '100%',
+                    }}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {step.label}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        
+        {/* Progress Bar */}
+        <View className="h-1 bg-neutral-200 rounded-full overflow-hidden">
+          <View
+            className="h-full bg-primary-500 rounded-full"
+            style={{ width: `${((getCurrentStepIndex() + 1) / steps.length) * 100}%` }}
+          />
+        </View>
       </View>
-      
-      {/* Progress Bar */}
-      <View className="h-1 bg-neutral-200 rounded-full overflow-hidden">
-        <View
-          className="h-full bg-primary-500 rounded-full"
-          style={{ width: `${((getCurrentStepIndex() + 1) / steps.length) * 100}%` }}
-        />
-      </View>
-    </View>
-  );
+    );
+  };
 
   const renderStepContent = () => {
     switch (currentStep) {
       case 'summary':
         return (
-          <AnimatedView animation="fade" delay={0} className="px-4 pt-4">
+          <AnimatedView 
+            animation="fade" 
+            delay={0} 
+            style={{ 
+              paddingHorizontal: padding.horizontal, 
+              paddingTop: padding.vertical,
+              maxWidth: isTabletDevice && !isLandscapeMode ? 600 : '100%',
+              alignSelf: isTabletDevice && !isLandscapeMode ? 'center' : 'stretch',
+            }}
+          >
             <OrderSummary
               items={items}
               subtotal={cartSummary.subtotalValue}
@@ -424,7 +496,17 @@ const CheckoutScreen = () => {
 
       case 'delivery':
         return (
-          <AnimatedView animation="slide" delay={0} enterFrom="right" className="px-4 pt-4">
+          <AnimatedView 
+            animation="slide" 
+            delay={0} 
+            enterFrom="right" 
+            style={{ 
+              paddingHorizontal: padding.horizontal, 
+              paddingTop: padding.vertical,
+              maxWidth: isTabletDevice && !isLandscapeMode ? 600 : '100%',
+              alignSelf: isTabletDevice && !isLandscapeMode ? 'center' : 'stretch',
+            }}
+          >
             <PickupPointSelector
               pickupPoints={pickupPoints}
               selectedPickupPointId={selectedPickupPointId}
@@ -465,7 +547,17 @@ const CheckoutScreen = () => {
 
       case 'payment':
         return (
-          <AnimatedView animation="slide" delay={0} enterFrom="right" className="px-4 pt-4">
+          <AnimatedView 
+            animation="slide" 
+            delay={0} 
+            enterFrom="right" 
+            style={{ 
+              paddingHorizontal: padding.horizontal, 
+              paddingTop: padding.vertical,
+              maxWidth: isTabletDevice && !isLandscapeMode ? 600 : '100%',
+              alignSelf: isTabletDevice && !isLandscapeMode ? 'center' : 'stretch',
+            }}
+          >
             <PaymentMethodSelector
               selectedMethod={paymentMethod}
               onSelectMethod={setPaymentMethod}
@@ -513,7 +605,16 @@ const CheckoutScreen = () => {
 
       case 'review':
         return (
-          <AnimatedView animation="fade" delay={0} className="px-4 pt-4">
+          <AnimatedView 
+            animation="fade" 
+            delay={0} 
+            style={{ 
+              paddingHorizontal: padding.horizontal, 
+              paddingTop: padding.vertical,
+              maxWidth: isTabletDevice && !isLandscapeMode ? 600 : '100%',
+              alignSelf: isTabletDevice && !isLandscapeMode ? 'center' : 'stretch',
+            }}
+          >
             <View className="bg-white rounded-xl p-4 mb-4">
               <Text className="text-lg font-bold text-neutral-900 mb-4">
                 Order Summary
@@ -624,7 +725,10 @@ const CheckoutScreen = () => {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 180 }}
+        contentContainerStyle={{ 
+          paddingBottom: totalTabBarHeight + (isTabletDevice ? 120 : 100),
+          paddingHorizontal: isTabletDevice && !isLandscapeMode ? padding.horizontal * 2 : 0,
+        }}
         showsVerticalScrollIndicator={false}
       >
         {!cartValidation.isValid && currentStep === 'summary' && (
@@ -644,19 +748,45 @@ const CheckoutScreen = () => {
         animation="slide"
         delay={0}
         enterFrom="bottom"
-        style={[styles.navigationContainer, { bottom: totalTabBarHeight }] as any}
+        style={[
+          styles.navigationContainer, 
+          { 
+            bottom: totalTabBarHeight,
+            paddingHorizontal: padding.horizontal,
+            maxWidth: isTabletDevice && !isLandscapeMode ? 600 : '100%',
+            alignSelf: isTabletDevice && !isLandscapeMode ? 'center' : 'stretch',
+          }
+        ] as any}
       >
-        <View style={styles.buttonRow}>
+        <View style={[
+          styles.buttonRow,
+          {
+            flexDirection: isSmall || isLandscapeMode ? 'column' : 'row',
+            gap: isSmall || isLandscapeMode ? 8 : 12,
+          }
+        ]}>
           <Button
-            title="← Back"
+            title={isSmall ? "← Back" : "← Back"}
             onPress={handleBack}
             variant="outline"
-            style={styles.backButton}
+            style={{
+              ...styles.backButton,
+              flex: isSmall || isLandscapeMode ? 0 : 1,
+              width: isSmall || isLandscapeMode ? '100%' : undefined,
+              minHeight: MIN_TOUCH_TARGET,
+              marginRight: isSmall || isLandscapeMode ? 0 : 12,
+            } as any}
           />
           {currentStep === 'review' ? (
             <Button
               title={
-                paymentMethod === 'online' && !paymentIntentClientSecret
+                isSmall
+                  ? paymentMethod === 'online' && !paymentIntentClientSecret
+                    ? `Pay • ${cartSummary.total}`
+                    : paymentMethod === 'cod'
+                    ? `Order (COD) • ${cartSummary.total}`
+                    : `Order • ${cartSummary.total}`
+                  : paymentMethod === 'online' && !paymentIntentClientSecret
                   ? `Initialize Payment • ${cartSummary.total}`
                   : paymentMethod === 'cod'
                   ? `Place Order (COD) • ${cartSummary.total}`
@@ -665,14 +795,24 @@ const CheckoutScreen = () => {
               onPress={handlePlaceOrder}
               loading={isProcessing || isCreatingPaymentIntent}
               disabled={isProcessing || isCreatingPaymentIntent}
-              style={styles.nextButton}
+              style={{
+                ...styles.nextButton,
+                flex: isSmall || isLandscapeMode ? 0 : 2,
+                width: isSmall || isLandscapeMode ? '100%' : undefined,
+                minHeight: MIN_TOUCH_TARGET,
+              } as any}
             />
           ) : (
             <Button
               title="→ Next"
               onPress={handleNext}
               disabled={!canProceedToNextStep()}
-              style={styles.nextButton}
+              style={{
+                ...styles.nextButton,
+                flex: isSmall || isLandscapeMode ? 0 : 2,
+                width: isSmall || isLandscapeMode ? '100%' : undefined,
+                minHeight: MIN_TOUCH_TARGET,
+              } as any}
             />
           )}
         </View>
@@ -691,7 +831,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: colors.neutral[200],
-    paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 12,
     shadowColor: '#000',
@@ -701,14 +840,13 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   buttonRow: {
-    flexDirection: 'row',
+    // flexDirection is set dynamically based on screen size
   },
   backButton: {
-    flex: 1,
-    marginRight: 12,
+    // flex and width are set dynamically
   },
   nextButton: {
-    flex: 2,
+    // flex and width are set dynamically
   },
 });
 

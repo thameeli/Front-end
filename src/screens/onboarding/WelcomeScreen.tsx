@@ -13,6 +13,7 @@ import { RootStackParamList } from '../../types';
 import { colors } from '../../theme';
 import { EASING, ANIMATION_DURATION } from '../../utils/animations';
 import Button from '../../components/Button';
+import { isTablet, getResponsivePadding, getResponsiveFontSize } from '../../utils/responsive';
 
 // Safe import of reanimated with fallback
 let Animated: any;
@@ -48,6 +49,7 @@ type WelcomeScreenNavigationProp = StackNavigationProp<
 
 const WelcomeScreen = () => {
   const navigation = useNavigation<WelcomeScreenNavigationProp>();
+  const padding = getResponsivePadding();
 
   // Initialize shared values only if reanimated is available
   const logoScale = useSharedValue ? useSharedValue(0) : { value: 1 };
@@ -124,7 +126,7 @@ const WelcomeScreen = () => {
     <View style={styles.container}>
       <LinearGradient
         colors={[colors.primary[500], colors.primary[600]]}
-        style={styles.gradient}
+        style={[styles.gradient, { paddingHorizontal: padding.horizontal * 1.5, paddingVertical: padding.vertical * 3 }]}
       >
         <AnimatedView style={[styles.logoContainer, logoStyle]}>
           <View style={styles.logoCircle}>
@@ -153,7 +155,7 @@ const WelcomeScreen = () => {
           ))}
         </AnimatedView>
 
-        <AnimatedView style={[styles.buttonContainer, buttonStyle]}>
+        <AnimatedView style={[styles.buttonContainer, buttonStyle, { bottom: padding.vertical * 3, paddingHorizontal: padding.horizontal * 1.5 }]}>
           <Button
             title="Get Started"
             onPress={() => navigation.navigate('CountrySelection' as never)}
@@ -186,8 +188,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
-    paddingVertical: 60,
   },
   logoContainer: {
     marginBottom: 40,
@@ -207,14 +207,14 @@ const styles = StyleSheet.create({
     marginBottom: 60,
   },
   title: {
-    fontSize: 32,
+    fontSize: getResponsiveFontSize(32),
     fontWeight: 'bold',
     color: 'white',
     marginBottom: 12,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
     lineHeight: 24,
@@ -233,15 +233,13 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   featureText: {
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     color: 'white',
     fontWeight: '500',
   },
   buttonContainer: {
     width: '100%',
     position: 'absolute',
-    bottom: 60,
-    paddingHorizontal: 32,
   },
   button: {
     marginBottom: 16,

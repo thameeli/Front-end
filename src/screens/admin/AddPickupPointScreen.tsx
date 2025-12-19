@@ -8,12 +8,14 @@ import { pickupPointService } from '../../services';
 import { AppHeader, Input, Button, ErrorMessage, CountrySelector } from '../../components';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
+import { isTablet, isSmallDevice, getResponsivePadding } from '../../utils/responsive';
 
 type AddPickupPointScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AddPickupPoint'>;
 
 const AddPickupPointScreen = () => {
   const navigation = useNavigation<AddPickupPointScreenNavigationProp>();
   const queryClient = useQueryClient();
+  const padding = getResponsivePadding();
 
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
@@ -74,7 +76,14 @@ const AddPickupPointScreen = () => {
   return (
     <View style={styles.container}>
       <AppHeader title="Add Pickup Point" showBack />
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={{ 
+          padding: padding.vertical,
+          maxWidth: isTablet ? 600 : '100%',
+          alignSelf: isTablet ? 'center' : 'stretch',
+        }}
+      >
         {Object.keys(errors).length > 0 && (
           <ErrorMessage
             message="Please fix the errors below"
@@ -177,7 +186,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 16,
   },
   errorMessage: {
     marginBottom: 16,
@@ -195,7 +203,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   coordinatesRow: {
-    flexDirection: 'row',
+    flexDirection: isSmallDevice ? 'column' : 'row',
     gap: 12,
   },
   halfWidth: {

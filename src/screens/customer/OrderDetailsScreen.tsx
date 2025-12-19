@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { RouteProp, useRoute } from '@react-navigation/native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
@@ -26,6 +26,13 @@ import { formatPrice } from '../../utils/productUtils';
 import { formatDateTime } from '../../utils/regionalFormatting';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
+import {
+  isSmallDevice,
+  isTablet,
+  isLandscape,
+  getResponsivePadding,
+  getResponsiveFontSize,
+} from '../../utils/responsive';
 
 type OrderDetailsScreenRouteProp = RouteProp<RootStackParamList, 'OrderDetails'>;
 type OrderDetailsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'OrderDetails'>;
@@ -38,6 +45,21 @@ const OrderDetailsScreen = () => {
   const { selectedCountry } = useCartStore();
   const queryClient = useQueryClient();
   const { orderId } = route.params;
+  
+  // Responsive dimensions
+  const [screenData, setScreenData] = useState(Dimensions.get('window'));
+  const isSmall = isSmallDevice();
+  const isTabletDevice = isTablet();
+  const isLandscapeMode = isLandscape();
+  const padding = getResponsivePadding();
+  
+  // Update dimensions on orientation change
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenData(window);
+    });
+    return () => subscription?.remove();
+  }, []);
   
   // Use user's country preference if authenticated, otherwise use selected country from cart store
   const country = (isAuthenticated && user?.country_preference) 
@@ -97,19 +119,37 @@ const OrderDetailsScreen = () => {
   return (
     <View style={styles.container}>
       <AppHeader title="Order Details" showBack />
-      <ScrollView style={styles.content}>
+      <ScrollView style={[
+        styles.content,
+        {
+          padding: padding.horizontal,
+          paddingBottom: padding.vertical * 2,
+        }
+      ]}>
         <Card style={styles.headerCard}>
-          <View style={styles.headerRow}>
+          <View style={[
+            styles.headerRow,
+            {
+              flexDirection: isSmall || isLandscapeMode ? 'column' : 'row',
+              gap: isSmall || isLandscapeMode ? 12 : 0,
+            }
+          ]}>
             <View style={styles.orderInfo}>
               <Text 
-                style={styles.orderNumber}
+                style={[
+                  styles.orderNumber,
+                  { fontSize: getResponsiveFontSize(20, 18, 22) }
+                ]}
                 accessibilityRole="header"
                 accessibilityLabel={`Order number: ${order.id.slice(0, 8).toUpperCase()}`}
               >
                 Order #{order.id.slice(0, 8).toUpperCase()}
               </Text>
               <Text 
-                style={styles.orderDate}
+                style={[
+                  styles.orderDate,
+                  { fontSize: getResponsiveFontSize(14, 12, 16) }
+                ]}
                 accessibilityLabel={`Order date: ${formatDateTime(order.created_at, country)}`}
               >
                 {formatDateTime(order.created_at, country)}
@@ -124,7 +164,12 @@ const OrderDetailsScreen = () => {
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>Delivery Information</Text>
           {order.pickup_point_id && pickupPoint ? (
-            <View style={styles.infoRow}>
+            <View style={[
+              styles.infoRow,
+              {
+                flexDirection: isSmall || isLandscapeMode ? 'column' : 'row',
+              }
+            ]}>
               <Icon name="map-marker" size={20} color="#007AFF" accessibilityElementsHidden />
               <View style={styles.infoContent} accessibilityRole="text">
                 <Text style={styles.infoLabel}>Pickup Point</Text>
@@ -149,7 +194,12 @@ const OrderDetailsScreen = () => {
               </View>
             </View>
           ) : order.delivery_address ? (
-            <View style={styles.infoRow}>
+            <View style={[
+              styles.infoRow,
+              {
+                flexDirection: isSmall || isLandscapeMode ? 'column' : 'row',
+              }
+            ]}>
               <Icon name="home" size={20} color="#007AFF" accessibilityElementsHidden />
               <View style={styles.infoContent} accessibilityRole="text">
                 <Text style={styles.infoLabel}>Delivery Address</Text>
@@ -168,7 +218,12 @@ const OrderDetailsScreen = () => {
 
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>Payment Information</Text>
-          <View style={styles.infoRow}>
+          <View style={[
+            styles.infoRow,
+            {
+              flexDirection: isSmall || isLandscapeMode ? 'column' : 'row',
+            }
+          ]}>
             <Icon name="credit-card" size={20} color="#007AFF" accessibilityElementsHidden />
             <View style={styles.infoContent} accessibilityRole="text">
               <Text style={styles.infoLabel}>Payment Method</Text>
@@ -180,7 +235,12 @@ const OrderDetailsScreen = () => {
               </Text>
             </View>
           </View>
-          <View style={styles.infoRow}>
+          <View style={[
+            styles.infoRow,
+            {
+              flexDirection: isSmall || isLandscapeMode ? 'column' : 'row',
+            }
+          ]}>
             <Icon name="check-circle" size={20} color="#34C759" accessibilityElementsHidden />
             <View style={styles.infoContent} accessibilityRole="text">
               <Text style={styles.infoLabel}>Payment Status</Text>
@@ -231,7 +291,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 16,
+    // padding is set dynamically
   },
   section: {
     marginBottom: 16,
@@ -240,7 +300,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   headerRow: {
-    flexDirection: 'row',
+    // flexDirection is set dynamically
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
@@ -264,7 +324,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   infoRow: {
-    flexDirection: 'row',
+    // flexDirection will be set dynamically for small screens
     alignItems: 'flex-start',
     marginBottom: 16,
     gap: 12,

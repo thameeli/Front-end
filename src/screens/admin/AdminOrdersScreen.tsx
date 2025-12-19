@@ -3,8 +3,8 @@
  * Uses NativeWind for styling and Phase 2 components
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { View, Text, FlatList, RefreshControl, TouchableOpacity, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useQuery } from '@tanstack/react-query';
@@ -31,6 +31,11 @@ import { debounce } from '../../utils/debounce';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
 import { colors } from '../../theme';
+import {
+  isSmallDevice,
+  isTablet,
+  getResponsivePadding,
+} from '../../utils/responsive';
 
 type AdminOrdersScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AdminOrders'>;
 
@@ -38,6 +43,20 @@ const AdminOrdersScreen = () => {
   const navigation = useNavigation<AdminOrdersScreenNavigationProp>();
   const { user } = useAuthStore();
   const country = (user?.country_preference || COUNTRIES.GERMANY) as Country;
+
+  // Responsive dimensions
+  const [screenData, setScreenData] = useState(Dimensions.get('window'));
+  const isSmall = isSmallDevice();
+  const isTabletDevice = isTablet();
+  const padding = getResponsivePadding();
+  
+  // Update dimensions on orientation change
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenData(window);
+    });
+    return () => subscription?.remove();
+  }, []);
 
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus | 'all'>('all');
   const [selectedCountry, setSelectedCountry] = useState<'all' | 'germany' | 'norway'>('all');
@@ -99,14 +118,14 @@ const AdminOrdersScreen = () => {
   
   // Memoized render item
   const renderOrderItem = useCallback(({ item }: { item: typeof filteredOrders[0] }) => (
-    <ContentFadeIn delay={0} style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+    <ContentFadeIn delay={0} style={{ paddingHorizontal: padding.horizontal, marginBottom: 12 }}>
       <OrderCard
         order={item}
         country={country}
         onPress={() => handleOrderPress(item.id)}
       />
     </ContentFadeIn>
-  ), [country, handleOrderPress]);
+  ), [country, handleOrderPress, padding.horizontal]);
 
   // Memoized key extractor
   const keyExtractor = useCallback((item: typeof filteredOrders[0]) => item.id, []);
@@ -137,7 +156,16 @@ const AdminOrdersScreen = () => {
   }
 
   const renderHeader = () => (
-    <AnimatedView animation="fade" delay={0} className="px-4 pt-4 pb-2 bg-white">
+    <AnimatedView 
+      animation="fade" 
+      delay={0} 
+      style={{
+        paddingHorizontal: padding.horizontal,
+        paddingTop: padding.vertical,
+        paddingBottom: 8,
+        backgroundColor: '#fff',
+      }}
+    >
       <Text className="text-2xl font-bold text-neutral-900 mb-4">Manage Orders</Text>
 
       <SearchBar

@@ -3,8 +3,8 @@
  * Uses NativeWind for styling and Phase 2 components
  */
 
-import React from 'react';
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useQuery } from '@tanstack/react-query';
@@ -21,6 +21,12 @@ import type { Country } from '../../constants';
 import type { Order } from '../../types';
 import { RootStackParamList } from '../../types';
 import { colors } from '../../theme';
+import {
+  isSmallDevice,
+  isTablet,
+  getResponsivePadding,
+  getColumnCount,
+} from '../../utils/responsive';
 
 type AdminDashboardScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AdminDashboard'>;
 
@@ -28,6 +34,21 @@ const AdminDashboardScreen = () => {
   const navigation = useNavigation<AdminDashboardScreenNavigationProp>();
   const { user } = useAuthStore();
   const country = (user?.country_preference || COUNTRIES.GERMANY) as Country;
+  
+  // Responsive dimensions
+  const [screenData, setScreenData] = useState(Dimensions.get('window'));
+  const isSmall = isSmallDevice();
+  const isTabletDevice = isTablet();
+  const numColumns = getColumnCount();
+  const padding = getResponsivePadding();
+  
+  // Update dimensions on orientation change
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenData(window);
+    });
+    return () => subscription?.remove();
+  }, []);
 
   // Set up real-time updates
   useOrderRealtime(user?.id || '');
@@ -106,58 +127,42 @@ const AdminDashboardScreen = () => {
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
         showsVerticalScrollIndicator={false}
       >
-        <View className="px-4 pt-4">
+        <View style={{
+          paddingHorizontal: padding.horizontal,
+          paddingTop: padding.vertical,
+          maxWidth: isTabletDevice ? 1200 : '100%',
+          alignSelf: isTabletDevice ? 'center' : 'stretch',
+        }}>
           {/* Statistics Grid */}
           <AnimatedView animation="fade" delay={0}>
-            <View className="flex-row flex-wrap gap-3 mb-4">
-              <View className="w-[48%]">
-                <StatisticsCard
-                  label="Total Orders"
-                  value={statistics.totalOrders.toString()}
-                  icon="package-variant"
-                  iconColor={colors.primary[500]}
-                />
-              </View>
-              <View className="w-[48%]">
-                <StatisticsCard
-                  label="Today's Orders"
-                  value={statistics.todayOrders.toString()}
-                  icon="calendar-today"
-                  iconColor={colors.success[500]}
-                />
-              </View>
-              <View className="w-[48%]">
-                <StatisticsCard
-                  label="Total Revenue"
-                  value={formatPrice(statistics.totalRevenue, country)}
-                  icon="currency-usd"
-                  iconColor={colors.warning[500]}
-                />
-              </View>
-              <View className="w-[48%]">
-                <StatisticsCard
-                  label="Today's Revenue"
-                  value={formatPrice(statistics.todayRevenue, country)}
-                  icon="trending-up"
-                  iconColor={colors.secondary[500]}
-                />
-              </View>
-              <View className="w-[48%]">
-                <StatisticsCard
-                  label="Pending Orders"
-                  value={statistics.pendingOrders.toString()}
-                  icon="clock-outline"
-                  iconColor={colors.error[500]}
-                />
-              </View>
-              <View className="w-[48%]">
-                <StatisticsCard
-                  label="Total Products"
-                  value={statistics.totalProducts.toString()}
-                  icon="store"
-                  iconColor={colors.primary[500]}
-                />
-              </View>
+            <View style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              gap: 12,
+              marginBottom: 16,
+            }}>
+              {[
+                { label: "Total Orders", value: statistics.totalOrders.toString(), icon: "package-variant", iconColor: colors.primary[500] },
+                { label: "Today's Orders", value: statistics.todayOrders.toString(), icon: "calendar-today", iconColor: colors.success[500] },
+                { label: "Total Revenue", value: formatPrice(statistics.totalRevenue, country), icon: "currency-usd", iconColor: colors.warning[500] },
+                { label: "Today's Revenue", value: formatPrice(statistics.todayRevenue, country), icon: "trending-up", iconColor: colors.secondary[500] },
+                { label: "Pending Orders", value: statistics.pendingOrders.toString(), icon: "clock-outline", iconColor: colors.error[500] },
+                { label: "Total Products", value: statistics.totalProducts.toString(), icon: "store", iconColor: colors.primary[500] },
+              ].map((stat, index) => (
+                <View
+                  key={index}
+                  style={{
+                    width: isSmall ? '100%' : isTabletDevice ? '31%' : '48%',
+                  }}
+                >
+                  <StatisticsCard
+                    label={stat.label}
+                    value={stat.value}
+                    icon={stat.icon as any}
+                    iconColor={stat.iconColor}
+                  />
+                </View>
+              ))}
             </View>
           </AnimatedView>
 
@@ -167,22 +172,58 @@ const AdminDashboardScreen = () => {
               <Text className="text-lg font-bold text-neutral-900 mb-4">
                 Quick Actions
               </Text>
-              <View className="flex-row flex-wrap gap-3">
+              <View style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                gap: 12,
+              }}>
                 <TouchableOpacity
                   onPress={() => navigation.navigate('AdminProducts' as never)}
-                  className="flex-1 min-w-[48%] flex-row items-center justify-center p-4 bg-primary-50 rounded-lg border-2 border-primary-200"
+                  style={{
+                    flex: isSmall ? 0 : 1,
+                    minWidth: isSmall ? '100%' : '48%',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 16,
+                    backgroundColor: colors.primary[50],
+                    borderRadius: 12,
+                    borderWidth: 2,
+                    borderColor: colors.primary[200],
+                  }}
                 >
                   <Icon name="store" size={24} color={colors.primary[500]} />
-                  <Text className="text-sm font-semibold text-primary-500 ml-2">
+                  <Text style={{
+                    fontSize: 14,
+                    fontWeight: '600',
+                    color: colors.primary[500],
+                    marginLeft: 8,
+                  }}>
                     Products
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => navigation.navigate('AdminOrders' as never)}
-                  className="flex-1 min-w-[48%] flex-row items-center justify-center p-4 bg-success-50 rounded-lg border-2 border-success-200"
+                  style={{
+                    flex: isSmall ? 0 : 1,
+                    minWidth: isSmall ? '100%' : '48%',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 16,
+                    backgroundColor: colors.success[50],
+                    borderRadius: 12,
+                    borderWidth: 2,
+                    borderColor: colors.success[200],
+                  }}
                 >
                   <Icon name="package-variant" size={24} color={colors.success[500]} />
-                  <Text className="text-sm font-semibold text-success-500 ml-2">
+                  <Text style={{
+                    fontSize: 14,
+                    fontWeight: '600',
+                    color: colors.success[500],
+                    marginLeft: 8,
+                  }}>
                     Orders
                   </Text>
                 </TouchableOpacity>

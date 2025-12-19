@@ -6,12 +6,14 @@ import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { RootStackParamList } from '../../types';
 import { AppHeader, Card } from '../../components';
 import { useAuthStore } from '../../store/authStore';
+import { isTablet, getResponsivePadding, getResponsiveFontSize } from '../../utils/responsive';
 
 type AdminSettingsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Settings'>;
 
 const AdminSettingsScreen = () => {
   const navigation = useNavigation<AdminSettingsScreenNavigationProp>();
   const { user, logout } = useAuthStore();
+  const padding = getResponsivePadding();
 
   const handleLogout = () => {
     logout();
@@ -20,7 +22,14 @@ const AdminSettingsScreen = () => {
   return (
     <View style={styles.container}>
       <AppHeader title="Settings" showBack />
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={{ 
+          padding: padding.vertical,
+          maxWidth: isTablet ? 600 : '100%',
+          alignSelf: isTablet ? 'center' : 'stretch',
+        }}
+      >
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
           <TouchableOpacity
@@ -109,13 +118,12 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 16,
   },
   section: {
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
     color: '#000',
     marginBottom: 16,

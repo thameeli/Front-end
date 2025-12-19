@@ -1,14 +1,21 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
 import { AppHeader } from '../../components';
+import { RootStackParamList } from '../../types';
+import { isSmallDevice, isTablet, getResponsivePadding, getResponsiveFontSize } from '../../utils/responsive';
+
+type SettingsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Settings'>;
 
 const SettingsScreen = () => {
   const navigation = useNavigation<SettingsScreenNavigationProp>();
   const { t, i18n } = useTranslation();
   const { user } = useAuthStore();
+  const padding = getResponsivePadding();
 
   const changeLanguage = (lng: string) => {
     i18n.changeLanguage(lng);
@@ -17,7 +24,14 @@ const SettingsScreen = () => {
   return (
     <View style={styles.container}>
       <AppHeader title={t('settings.title')} showBack />
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={{ 
+          padding: padding.vertical,
+          maxWidth: isTablet ? 600 : '100%',
+          alignSelf: isTablet ? 'center' : 'stretch',
+        }}
+      >
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('settings.language')}</Text>
           <View style={styles.languageOptions}>
@@ -122,13 +136,12 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 20,
   },
   section: {
     marginBottom: 32,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
     marginBottom: 16,
     color: '#000',
@@ -159,16 +172,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   infoRow: {
-    flexDirection: 'row',
+    flexDirection: isSmallDevice ? 'column' : 'row',
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+    gap: isSmallDevice ? 4 : 0,
   },
   infoLabel: {
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     fontWeight: '600',
     color: '#666',
-    width: 100,
+    width: isSmallDevice ? '100%' : 100,
   },
   infoValue: {
     fontSize: 16,

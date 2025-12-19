@@ -8,6 +8,7 @@ import { orderService } from '../../services/orderService';
 import { notificationService } from '../../services/notificationService';
 import { AppHeader, Input, Button, LoadingScreen, ErrorMessage, Card } from '../../components';
 import { useAuthStore } from '../../store/authStore';
+import { isTablet, getResponsivePadding, getResponsiveFontSize } from '../../utils/responsive';
 
 type WhatsAppNotificationScreenRouteProp = RouteProp<RootStackParamList, 'OrderDetails'>;
 type WhatsAppNotificationScreenNavigationProp = StackNavigationProp<RootStackParamList, 'OrderDetails'>;
@@ -18,6 +19,7 @@ const WhatsAppNotificationScreen = () => {
   const { orderId } = route.params;
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
+  const padding = getResponsivePadding();
 
   const [message, setMessage] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -91,7 +93,14 @@ const WhatsAppNotificationScreen = () => {
   return (
     <View style={styles.container}>
       <AppHeader title="Send WhatsApp Notification" showBack />
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={{ 
+          padding: padding.vertical,
+          maxWidth: isTablet ? 600 : '100%',
+          alignSelf: isTablet ? 'center' : 'stretch',
+        }}
+      >
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>Order Information</Text>
           <Text style={styles.orderInfo}>
@@ -148,13 +157,12 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 16,
   },
   section: {
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
     color: '#000',
     marginBottom: 12,

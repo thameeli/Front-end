@@ -12,4 +12,5 @@ export * from './orderUtils';
 export * from './productUtils';
 export * from './rbac';
 export * from './regionalFormatting';
+export * from './responsive';
 export * from './validation';

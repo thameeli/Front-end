@@ -3,8 +3,8 @@
  * Uses NativeWind for styling and Phase 2 components
  */
 
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +14,12 @@ import { useAuthStore } from '../../store/authStore';
 import { Button, Input, ErrorMessage, AnimatedView, Badge } from '../../components';
 import { registerSchema, validateForm } from '../../utils/validation';
 import { colors } from '../../theme';
+import {
+  isSmallDevice,
+  isTablet,
+  getResponsivePadding,
+  getResponsiveFontSize,
+} from '../../utils/responsive';
 
 type RegisterScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Register'>;
 
@@ -28,6 +34,20 @@ const RegisterScreen = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [apiError, setApiError] = useState<string>('');
+  
+  // Responsive dimensions
+  const [screenData, setScreenData] = useState(Dimensions.get('window'));
+  const isSmall = isSmallDevice();
+  const isTabletDevice = isTablet();
+  const padding = getResponsivePadding();
+  
+  // Update dimensions on orientation change
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenData(window);
+    });
+    return () => subscription?.remove();
+  }, []);
 
   const handleRegister = async () => {
     setErrors({});
@@ -74,17 +94,47 @@ const RegisterScreen = () => {
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
       >
-        <View className="flex-1 px-6 pt-16 pb-8">
+        <View style={{
+          flex: 1,
+          paddingHorizontal: padding.horizontal * 1.5,
+          paddingTop: isSmall ? padding.vertical * 2 : padding.vertical * 4,
+          paddingBottom: padding.vertical * 2,
+          maxWidth: isTabletDevice ? 600 : '100%',
+          alignSelf: isTabletDevice ? 'center' : 'stretch',
+        }}>
           {/* Header with Progress Indicator */}
           <AnimatedView animation="fade" delay={0} className="mb-8">
             <View className="items-center mb-6">
-              <View className="w-20 h-20 rounded-full bg-primary-500/10 justify-center items-center mb-6">
-                <Icon name="account-plus" size={40} color={colors.primary[500]} />
+              <View style={{
+                width: isSmall ? 60 : isTabletDevice ? 100 : 80,
+                height: isSmall ? 60 : isTabletDevice ? 100 : 80,
+                borderRadius: isSmall ? 30 : isTabletDevice ? 50 : 40,
+                backgroundColor: colors.primary[500] + '10',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginBottom: padding.vertical * 1.5,
+              }}>
+                <Icon 
+                  name="account-plus" 
+                  size={isSmall ? 30 : isTabletDevice ? 50 : 40} 
+                  color={colors.primary[500]} 
+                />
               </View>
-              <Text className="text-4xl font-bold text-neutral-900 mb-2">
+              <Text style={{
+                fontSize: getResponsiveFontSize(isSmall ? 28 : isTabletDevice ? 48 : 36, 24, 48),
+                fontWeight: 'bold',
+                color: colors.neutral[900],
+                marginBottom: 8,
+                textAlign: 'center',
+              }}>
                 {t('auth.register')}
               </Text>
-              <Text className="text-base text-neutral-500 text-center mb-6">
+              <Text style={{
+                fontSize: getResponsiveFontSize(16, 14, 18),
+                color: colors.neutral[500],
+                textAlign: 'center',
+                marginBottom: padding.vertical * 1.5,
+              }}>
                 Create your account to get started
               </Text>
 

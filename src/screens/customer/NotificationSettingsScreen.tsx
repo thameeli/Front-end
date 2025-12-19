@@ -4,10 +4,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AppHeader, Card, Button } from '../../components';
 import { useAuthStore } from '../../store/authStore';
 import { notificationService } from '../../services/notificationService';
+import { isTablet, isSmallDevice, getResponsivePadding, getResponsiveFontSize } from '../../utils/responsive';
 
 const NotificationSettingsScreen = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const padding = getResponsivePadding();
 
   const [pushEnabled, setPushEnabled] = useState(true);
   const [orderNotifications, setOrderNotifications] = useState(true);
@@ -54,7 +56,14 @@ const NotificationSettingsScreen = () => {
   return (
     <View style={styles.container}>
       <AppHeader title="Notification Settings" showBack />
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={{ 
+          padding: padding.vertical,
+          maxWidth: isTablet ? 600 : '100%',
+          alignSelf: isTablet ? 'center' : 'stretch',
+        }}
+      >
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>Push Notifications</Text>
           <View style={styles.settingRow}>
@@ -160,24 +169,24 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 16,
   },
   section: {
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
     color: '#000',
     marginBottom: 16,
   },
   settingRow: {
-    flexDirection: 'row',
+    flexDirection: isSmallDevice ? 'column' : 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: isSmallDevice ? 'flex-start' : 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+    gap: isSmallDevice ? 8 : 0,
   },
   settingContent: {
     flex: 1,

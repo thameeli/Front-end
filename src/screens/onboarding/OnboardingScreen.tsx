@@ -3,7 +3,7 @@
  * Handles the complete onboarding experience
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, Dimensions, FlatList } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -11,6 +11,11 @@ import { RootStackParamList } from '../../types';
 import { colors } from '../../theme';
 import WelcomeScreen from './WelcomeScreen';
 import CountrySelectionScreen from './CountrySelectionScreen';
+import {
+  isSmallDevice,
+  getResponsivePadding,
+  getScreenWidth,
+} from '../../utils/responsive';
 
 // Safe import of reanimated with fallback
 let Animated: any;
@@ -37,7 +42,7 @@ const AnimatedView = Animated && Animated.View
     ? Animated.createAnimatedComponent(View)
     : View;
 
-const { width } = Dimensions.get('window');
+// Width will be updated dynamically
 
 type OnboardingScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -100,6 +105,20 @@ const OnboardingScreen = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useSharedValue ? useSharedValue(0) : { value: 0 };
+  
+  // Responsive dimensions
+  const [screenData, setScreenData] = useState(Dimensions.get('window'));
+  const width = screenData.width;
+  const isSmall = isSmallDevice();
+  const padding = getResponsivePadding();
+  
+  // Update dimensions on orientation change
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenData(window);
+    });
+    return () => subscription?.remove();
+  }, []);
 
   // Start with country selection first (required before accessing any content)
   const screens = [
@@ -178,6 +197,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
+    paddingHorizontal: 16,
   },
   paginationDot: {
     width: 8,

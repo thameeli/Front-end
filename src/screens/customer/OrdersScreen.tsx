@@ -3,13 +3,14 @@
  * Uses NativeWind for styling and Phase 2 components
  */
 
-import React, { useState, useMemo } from 'react';
-import { View, Text, FlatList, RefreshControl } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { View, Text, FlatList, RefreshControl, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
 import { RootStackParamList, OrderStatus } from '../../types';
 import { useAuthStore } from '../../store/authStore';
+import { useCartStore } from '../../store/cartStore';
 import { useOrders } from '../../hooks/useOrders';
 import { useOrderRealtime } from '../../hooks/useOrderRealtime';
 import {
@@ -29,6 +30,11 @@ import { getFilteredOrders } from '../../utils/orderUtils';
 import { debounce } from '../../utils/debounce';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
+import {
+  isSmallDevice,
+  isTablet,
+  getResponsivePadding,
+} from '../../utils/responsive';
 
 type OrdersScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Orders'>;
 
@@ -42,6 +48,20 @@ const OrdersScreen = () => {
   const country = (isAuthenticated && user?.country_preference) 
     ? user.country_preference 
     : (selectedCountry || COUNTRIES.GERMANY) as Country;
+
+  // Responsive dimensions
+  const [screenData, setScreenData] = useState(Dimensions.get('window'));
+  const isSmall = isSmallDevice();
+  const isTabletDevice = isTablet();
+  const padding = getResponsivePadding();
+  
+  // Update dimensions on orientation change
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenData(window);
+    });
+    return () => subscription?.remove();
+  }, []);
 
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -111,7 +131,7 @@ const OrdersScreen = () => {
     return (
       <View className="flex-1 bg-neutral-50">
         <AppHeader title="My Orders" />
-        <View className="px-4 pt-4">
+        <View style={{ paddingHorizontal: padding.horizontal, paddingTop: padding.vertical }}>
           <SkeletonCard type="order" count={3} />
         </View>
       </View>
@@ -133,7 +153,16 @@ const OrdersScreen = () => {
   }
 
   const renderHeader = () => (
-    <AnimatedView animation="fade" delay={0} className="px-4 pt-4 pb-2 bg-white">
+    <AnimatedView 
+      animation="fade" 
+      delay={0} 
+      style={{
+        paddingHorizontal: padding.horizontal,
+        paddingTop: padding.vertical,
+        paddingBottom: 8,
+        backgroundColor: '#fff',
+      }}
+    >
       <SearchBar
         value={searchQuery}
         onChangeText={handleSearchChange}

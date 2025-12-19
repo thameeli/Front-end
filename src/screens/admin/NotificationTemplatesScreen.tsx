@@ -5,9 +5,11 @@ import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { AppHeader, Card, Button, EmptyState, LoadingScreen, ErrorMessage } from '../../components';
 import { NotificationTemplate } from '../../types/notifications';
 import { notificationService } from '../../services/notificationService';
+import { isTablet, getResponsivePadding } from '../../utils/responsive';
 
 const NotificationTemplatesScreen = () => {
   const queryClient = useQueryClient();
+  const padding = getResponsivePadding();
 
   // Fetch templates
   const {
@@ -111,7 +113,14 @@ const NotificationTemplatesScreen = () => {
               </View>
             </Card>
           )}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            { 
+              padding: padding.vertical,
+              maxWidth: isTablet ? 600 : '100%',
+              alignSelf: isTablet ? 'center' : 'stretch',
+            }
+          ]}
         />
       )}
     </View>
@@ -124,7 +133,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   listContent: {
-    padding: 16,
+    // padding will be set dynamically
   },
   templateCard: {
     marginBottom: 12,

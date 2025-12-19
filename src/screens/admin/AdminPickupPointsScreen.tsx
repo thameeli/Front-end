@@ -11,6 +11,7 @@ import { useAuthStore } from '../../store/authStore';
 import { formatPrice } from '../../utils/productUtils';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
+import { isTablet, isSmallDevice, getResponsivePadding } from '../../utils/responsive';
 
 type AdminPickupPointsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AdminPickupPoints'>;
 
@@ -19,6 +20,7 @@ const AdminPickupPointsScreen = () => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const country = (user?.country_preference || COUNTRIES.GERMANY) as Country;
+  const padding = getResponsivePadding();
 
   // Fetch all pickup points
   const { data: pickupPoints = [], isLoading, error, refetch } = useQuery({
@@ -184,7 +186,14 @@ const AdminPickupPointsScreen = () => {
           data={pickupPoints}
           keyExtractor={keyExtractor}
           renderItem={renderPickupPointItem}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            { 
+              padding: padding.vertical,
+              maxWidth: isTablet ? 600 : '100%',
+              alignSelf: isTablet ? 'center' : 'stretch',
+            }
+          ]}
           removeClippedSubviews={true}
           maxToRenderPerBatch={10}
           updateCellsBatchingPeriod={50}
@@ -216,7 +225,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   listContent: {
-    padding: 16,
+    // padding will be set dynamically
   },
   pickupPointCard: {
     backgroundColor: '#fff',
@@ -268,7 +277,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   actions: {
-    flexDirection: 'row',
+    flexDirection: isSmallDevice ? 'column' : 'row',
     justifyContent: 'flex-end',
     gap: 8,
     paddingTop: 12,
@@ -313,7 +322,7 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
   },
   footer: {
-    padding: 16,
+    padding: padding.vertical,
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',

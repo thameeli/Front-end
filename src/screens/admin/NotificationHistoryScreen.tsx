@@ -9,11 +9,13 @@ import { formatPhoneNumber } from '../../utils/regionalFormatting';
 import { useAuthStore } from '../../store/authStore';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
+import { isTablet, isSmallDevice, getResponsivePadding } from '../../utils/responsive';
 
 const NotificationHistoryScreen = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'sent' | 'delivered' | 'failed'>('all');
   const { user } = useAuthStore();
   const country = (user?.country_preference || COUNTRIES.GERMANY) as Country;
+  const padding = getResponsivePadding();
 
   // Fetch WhatsApp notification history
   const {
@@ -49,7 +51,7 @@ const NotificationHistoryScreen = () => {
     <View style={styles.container}>
       <AppHeader title="Notification History" />
 
-      <View style={styles.filters}>
+      <View style={[styles.filters, { padding: padding.vertical, paddingBottom: padding.vertical * 0.5, gap: 8 }]}>
         {(['all', 'sent', 'delivered', 'failed'] as const).map((status) => (
           <TouchableOpacity
             key={status}
@@ -123,7 +125,15 @@ const NotificationHistoryScreen = () => {
               </View>
             </Card>
           )}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            { 
+              padding: padding.vertical,
+              paddingTop: padding.vertical * 0.5,
+              maxWidth: isTablet ? 600 : '100%',
+              alignSelf: isTablet ? 'center' : 'stretch',
+            }
+          ]}
         />
       )}
     </View>
@@ -137,9 +147,8 @@ const styles = StyleSheet.create({
   },
   filters: {
     flexDirection: 'row',
-    padding: 16,
-    paddingBottom: 8,
-    gap: 8,
+    flexWrap: isSmallDevice ? 'wrap' : 'nowrap',
+    // padding will be set dynamically
   },
   filterButton: {
     paddingHorizontal: 16,
@@ -164,8 +173,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   listContent: {
-    padding: 16,
-    paddingTop: 8,
+    // padding will be set dynamically
   },
   notificationCard: {
     marginBottom: 12,

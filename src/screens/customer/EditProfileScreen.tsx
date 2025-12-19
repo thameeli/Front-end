@@ -11,6 +11,7 @@ import { profileUpdateSchema, validateForm } from '../../utils/validation';
 import { formatPhoneNumber } from '../../utils/regionalFormatting';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
+import { isTablet, getResponsivePadding } from '../../utils/responsive';
 
 type EditProfileScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Settings'>;
 
@@ -24,6 +25,7 @@ const EditProfileScreen = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [apiError, setApiError] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const padding = getResponsivePadding();
 
   useEffect(() => {
     if (user) {
@@ -67,7 +69,14 @@ const EditProfileScreen = () => {
   return (
     <View style={styles.container}>
       <AppHeader title={t('profile.title')} showBack />
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={{ 
+          padding: padding.vertical,
+          maxWidth: isTablet ? 600 : '100%',
+          alignSelf: isTablet ? 'center' : 'stretch',
+        }}
+      >
         {apiError && (
           <ErrorMessage
             message={apiError}
@@ -138,7 +147,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 20,
   },
   saveButton: {
     marginTop: 8,

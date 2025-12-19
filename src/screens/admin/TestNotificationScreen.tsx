@@ -12,12 +12,14 @@ const getPushNotificationService = async () => {
   return pushNotificationService;
 };
 import { useAuthStore } from '../../store/authStore';
+import { isTablet, getResponsivePadding, getResponsiveFontSize } from '../../utils/responsive';
 
 const TestNotificationScreen = () => {
   const { user } = useAuthStore();
   const [title, setTitle] = useState('Test Notification');
   const [body, setBody] = useState('This is a test notification from Thamili App');
   const [sending, setSending] = useState(false);
+  const padding = getResponsivePadding();
 
   const handleSendTest = async () => {
     if (!title.trim() || !body.trim()) {
@@ -64,7 +66,14 @@ const TestNotificationScreen = () => {
   return (
     <View style={styles.container}>
       <AppHeader title="Test Notification" showBack />
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={{ 
+          padding: padding.vertical,
+          maxWidth: isTablet ? 600 : '100%',
+          alignSelf: isTablet ? 'center' : 'stretch',
+        }}
+      >
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>Send Test Notification</Text>
           <Text style={styles.description}>
@@ -110,13 +119,12 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 16,
   },
   section: {
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
     color: '#000',
     marginBottom: 8,

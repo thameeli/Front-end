@@ -3,8 +3,8 @@
  * Uses NativeWind for styling and Phase 2 components
  */
 
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Alert, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, Alert, TouchableOpacity, StyleSheet, Platform, Dimensions } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -22,6 +22,14 @@ import { mediumHaptic, successHaptic } from '../../utils/hapticFeedback';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
 import { colors } from '../../theme';
+import {
+  isSmallDevice,
+  isTablet,
+  isLandscape,
+  getResponsivePadding,
+  getResponsiveFontSize,
+  responsiveWidth,
+} from '../../utils/responsive';
 
 type ProductDetailsScreenRouteProp = RouteProp<RootStackParamList, 'ProductDetails'>;
 type ProductDetailsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'ProductDetails'>;
@@ -35,6 +43,22 @@ const ProductDetailsScreen = () => {
   const { isAuthenticated, user } = useAuthStore();
   const { addItem, selectedCountry } = useCartStore();
   const [quantity, setQuantity] = useState(1);
+  const [isFavorite, setIsFavorite] = useState(false);
+  
+  // Responsive dimensions
+  const [screenData, setScreenData] = useState(Dimensions.get('window'));
+  const isSmall = isSmallDevice();
+  const isTabletDevice = isTablet();
+  const isLandscapeMode = isLandscape();
+  const padding = getResponsivePadding();
+  
+  // Update dimensions on orientation change
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenData(window);
+    });
+    return () => subscription?.remove();
+  }, []);
   
   // Calculate tab bar height to position sticky button above it
   const tabBarHeight = Platform.OS === 'ios' ? 60 : 56;
@@ -144,7 +168,10 @@ const ProductDetailsScreen = () => {
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{
+          paddingBottom: totalTabBarHeight + (isTabletDevice ? 120 : 100),
+          paddingHorizontal: isTabletDevice && !isLandscapeMode ? padding.horizontal * 2 : 0,
+        }}
       >
         {/* Image Gallery */}
         <AnimatedView animation="fade" delay={0}>
@@ -152,7 +179,17 @@ const ProductDetailsScreen = () => {
         </AnimatedView>
 
         {/* Product Details */}
-        <AnimatedView animation="slide" delay={100} enterFrom="bottom" className="px-4 pt-6">
+        <AnimatedView
+          animation="slide"
+          delay={100}
+          enterFrom="bottom"
+          style={{
+            paddingHorizontal: padding.horizontal,
+            paddingTop: padding.vertical * 1.5,
+            maxWidth: isTabletDevice && !isLandscapeMode ? 600 : '100%',
+            alignSelf: isTabletDevice && !isLandscapeMode ? 'center' : 'stretch',
+          }}
+        >
           <View className="flex-row items-start justify-between mb-4">
             <View className="flex-1">
               <View className="flex-row items-center justify-between mb-2">
@@ -315,7 +352,13 @@ const ProductDetailsScreen = () => {
                 contentContainerStyle={{ paddingRight: 16 }}
               >
                 {relatedProducts.map((relatedProduct, index) => (
-                  <View key={relatedProduct.id} style={{ marginRight: 12, width: 180 }}>
+                  <View
+                    key={relatedProduct.id}
+                    style={{
+                      marginRight: 12,
+                      width: isSmall ? responsiveWidth(45) : isTabletDevice ? 220 : 180,
+                    }}
+                  >
                     <ProductCard
                       product={relatedProduct}
                       country={country}
@@ -339,17 +382,49 @@ const ProductDetailsScreen = () => {
         enterFrom="bottom"
         style={[
           styles.stickyContainer,
-          { bottom: totalTabBarHeight }
+          {
+            bottom: totalTabBarHeight,
+            paddingHorizontal: padding.horizontal,
+            maxWidth: isTabletDevice && !isLandscapeMode ? 600 : '100%',
+            alignSelf: isTabletDevice && !isLandscapeMode ? 'center' : 'stretch',
+          }
         ]}
       >
-        <View style={styles.stickyContent}>
-          <View style={styles.totalContainer}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>
+        <View style={[
+          styles.stickyContent,
+          {
+            flexDirection: isSmall || isLandscapeMode ? 'column' : 'row',
+            gap: isSmall || isLandscapeMode ? 12 : 16,
+          }
+        ]}>
+          <View style={[
+            styles.totalContainer,
+            {
+              flex: isSmall || isLandscapeMode ? 0 : 1,
+              marginRight: isSmall || isLandscapeMode ? 0 : 16,
+              width: isSmall || isLandscapeMode ? '100%' : undefined,
+            }
+          ]}>
+            <Text style={[
+              styles.totalLabel,
+              { fontSize: getResponsiveFontSize(12, 11, 14) }
+            ]}>
+              Total
+            </Text>
+            <Text style={[
+              styles.totalValue,
+              { fontSize: getResponsiveFontSize(24, 20, 28) }
+            ]}>
               {formatPrice(price * quantity, country)}
             </Text>
           </View>
-          <View style={styles.buttonContainer}>
+          <View style={[
+            styles.buttonContainer,
+            {
+              flex: isSmall || isLandscapeMode ? 0 : 1,
+              width: isSmall || isLandscapeMode ? '100%' : undefined,
+            }
+          ]}>
             <Button
               title={inStock ? 'Add to Cart' : 'Out of Stock'}
               onPress={handleAddToCart}
@@ -373,7 +448,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#E5E5E5',
-    paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 12,
     shadowColor: '#000',
@@ -381,27 +455,27 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 8,
+    // paddingHorizontal is set dynamically
   },
   stickyContent: {
-    flexDirection: 'row',
+    // flexDirection is set dynamically
     alignItems: 'center',
   },
   totalContainer: {
-    flex: 1,
-    marginRight: 16,
+    // flex and width are set dynamically
   },
   totalLabel: {
-    fontSize: 12,
+    // fontSize is set dynamically
     color: '#9E9E9E',
     marginBottom: 4,
   },
   totalValue: {
-    fontSize: 24,
+    // fontSize is set dynamically
     fontWeight: 'bold',
     color: '#007AFF',
   },
   buttonContainer: {
-    flex: 1,
+    // flex and width are set dynamically
   },
 });
 
