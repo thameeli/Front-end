@@ -54,7 +54,7 @@ const ProfileScreen = () => {
 
   if (!user) {
     return (
-      <View className="flex-1 bg-white">
+      <View style={{ flex: 1, backgroundColor: 'rgba(245, 245, 250, 0.95)' }}>
         <AppHeader title={t('profile.title')} />
         <View className="flex-1 justify-center items-center">
           <Text className="text-base text-neutral-500">{t('common.loading')}</Text>
@@ -64,7 +64,7 @@ const ProfileScreen = () => {
   }
 
   return (
-    <View className="flex-1 bg-neutral-50">
+    <View style={{ flex: 1, backgroundColor: 'rgba(245, 245, 250, 0.95)' }}>
       <AppHeader title={t('profile.title')} />
       
       <ScrollView
@@ -90,7 +90,7 @@ const ProfileScreen = () => {
                   {user.role === 'admin' ? t('profile.admin') : t('profile.customer')}
                 </Badge>
                 <Badge variant="primary" size="sm">
-                  {user.country_preference === COUNTRIES.GERMANY ? 'Germany' : 'Norway'}
+                  {user.country_preference === COUNTRIES.GERMANY ? 'Germany' : 'Denmark'}
                 </Badge>
               </View>
             </View>

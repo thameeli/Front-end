@@ -6,9 +6,9 @@ import { validateStock, validateQuantity } from '../utils/cartValidation';
 
 interface CartState {
   items: CartItem[];
-  selectedCountry: 'germany' | 'norway' | null;
+  selectedCountry: 'germany' | 'denmark' | null;
   countrySelected: boolean;
-  addItem: (product: Product, quantity: number, country: 'germany' | 'norway') => void;
+  addItem: (product: Product, quantity: number, country: 'germany' | 'denmark') => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -16,7 +16,7 @@ interface CartState {
   getItemCount: () => number;
   loadCart: () => Promise<void>;
   saveCart: () => Promise<void>;
-  setSelectedCountry: (country: 'germany' | 'norway') => Promise<void>;
+  setSelectedCountry: (country: 'germany' | 'denmark') => Promise<void>;
   loadCountry: () => Promise<void>;
 }
 
@@ -119,7 +119,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     return items.reduce((total, item) => {
       const price = selectedCountry === 'germany' 
         ? item.product.price_germany 
-        : item.product.price_norway;
+        : item.product.price_denmark;
       return total + price * item.quantity;
     }, 0);
   },
@@ -140,7 +140,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       
       if (countryData) {
         set({ 
-          selectedCountry: countryData as 'germany' | 'norway',
+          selectedCountry: countryData as 'germany' | 'denmark',
           countrySelected: true,
         });
       } else {
@@ -173,7 +173,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       const countryData = await AsyncStorage.getItem(STORAGE_KEYS.SELECTED_COUNTRY);
       if (countryData) {
         set({ 
-          selectedCountry: countryData as 'germany' | 'norway',
+          selectedCountry: countryData as 'germany' | 'denmark',
           countrySelected: true,
         });
       } else {

@@ -218,7 +218,7 @@ const CheckoutScreen = () => {
     const orderItems = items.map((item) => {
       const price = country === COUNTRIES.GERMANY
         ? item.product.price_germany
-        : item.product.price_norway;
+        : item.product.price_denmark;
       return {
         product_id: item.product.id,
         quantity: item.quantity,
@@ -368,7 +368,7 @@ const CheckoutScreen = () => {
 
   if (items.length === 0) {
     return (
-      <View className="flex-1 bg-neutral-50">
+      <View style={{ flex: 1, backgroundColor: 'rgba(245, 245, 250, 0.95)' }}>
         <AppHeader title="Checkout" showBack />
         <View className="flex-1 justify-center items-center px-8">
           <EmptyState

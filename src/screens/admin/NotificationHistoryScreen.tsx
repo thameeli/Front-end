@@ -10,6 +10,7 @@ import { useAuthStore } from '../../store/authStore';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
 import { isTablet, isSmallDevice, getResponsivePadding } from '../../utils/responsive';
+import { glassmorphism, colors } from '../../theme';
 
 const NotificationHistoryScreen = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'sent' | 'delivered' | 'failed'>('all');
@@ -37,7 +38,7 @@ const NotificationHistoryScreen = () => {
 
   if (error) {
     return (
-      <View style={styles.container}>
+      <View style={glassmorphism.screenBackground}>
         <AppHeader title="Notification History" />
         <ErrorMessage
           message="Failed to load notification history. Please try again."
@@ -48,7 +49,7 @@ const NotificationHistoryScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={glassmorphism.screenBackground}>
       <AppHeader title="Notification History" />
 
       <View style={[styles.filters, { padding: padding.vertical, paddingBottom: padding.vertical * 0.5, gap: 8 }]}>
@@ -143,7 +144,6 @@ const NotificationHistoryScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   filters: {
     flexDirection: 'row',
@@ -154,22 +154,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: 'rgba(58, 181, 209, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
     minHeight: 44, // WCAG minimum touch target
+    ...glassmorphism.panel,
   },
   filterButtonActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: colors.primary[500],
+    borderColor: colors.primary[500],
   },
   filterText: {
     fontSize: 14,
-    color: '#666',
+    color: colors.neutral[600],
     fontWeight: '500',
   },
   filterTextActive: {
-    color: '#fff',
+    color: colors.white,
     fontWeight: '600',
   },
   listContent: {
@@ -190,16 +191,16 @@ const styles = StyleSheet.create({
   orderId: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#000',
+    color: colors.neutral[900],
     marginBottom: 4,
   },
   phoneNumber: {
     fontSize: 14,
-    color: '#666',
+    color: colors.neutral[600],
   },
   message: {
     fontSize: 14,
-    color: '#000',
+    color: colors.neutral[900],
     marginBottom: 8,
     lineHeight: 20,
   },
@@ -209,15 +210,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: 'rgba(58, 181, 209, 0.1)',
   },
   date: {
     fontSize: 12,
-    color: '#999',
+    color: colors.neutral[500],
   },
   errorText: {
     fontSize: 12,
-    color: '#FF3B30',
+    color: colors.error[500],
     flex: 1,
     textAlign: 'right',
   },

@@ -158,14 +158,23 @@ const Input = React.forwardRef<TextInput, InputProps>(({
         )}
 
         <AnimatedView
-          style={borderAnimatedStyle}
+          style={[
+            borderAnimatedStyle,
+            {
+              backgroundColor: 'rgba(255, 255, 255, 0.85)',
+              borderWidth: 1.5,
+              borderColor: error 
+                ? colors.error[500] 
+                : isFocused 
+                ? colors.primary[500] 
+                : 'rgba(58, 181, 209, 0.2)',
+            },
+          ]}
           className={`
             flex-row items-center
-            border-2 rounded-lg
-            bg-white
+            rounded-xl
             ${leftIcon ? 'pl-12' : 'pl-4'}
             ${rightIcon ? 'pr-12' : 'pr-4'}
-            ${error ? 'border-error-500' : isFocused ? 'border-primary-500' : 'border-neutral-300'}
           `}
         >
           <TextInput

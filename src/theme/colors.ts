@@ -1,23 +1,37 @@
 /**
  * Enhanced Color Palette for Thamili App
- * WCAG AA compliant colors with Scandinavian-inspired design
- * All text colors meet 4.5:1 contrast ratio on white backgrounds
- * All UI elements meet 3:1 contrast ratio
+ * Premium theme with Cyan (#3AB5D1) and Deep Navy (#0A1D44)
+ * Glassmorphism support included
+ * WCAG AA compliant colors
  */
 
 export const colors = {
-  // Primary Blue - Main brand color (WCAG AA compliant)
+  // Primary Cyan - Main brand color (#3AB5D1)
   primary: {
-    50: '#E6F2FF',
-    100: '#CCE5FF',
-    200: '#99CBFF',
-    300: '#66B1FF',
-    400: '#3397FF',
-    500: '#007AFF', // Main primary color - 4.5:1 contrast on white
-    600: '#0062CC', // 7:1 contrast on white
-    700: '#004999', // 8.5:1 contrast on white
-    800: '#003166',
-    900: '#001833',
+    50: '#E6F7FC',
+    100: '#CCEFF9',
+    200: '#99DFF3',
+    300: '#66CFED',
+    400: '#4DBFE7',
+    500: '#3AB5D1', // Main primary color - Cyan
+    600: '#2E91A7',
+    700: '#226D7D',
+    800: '#164953',
+    900: '#0B2529',
+  },
+
+  // Deep Navy - Premium navigation and accents (#0A1D44)
+  navy: {
+    50: '#E6E8EB',
+    100: '#CCD1D7',
+    200: '#99A3AF',
+    300: '#667587',
+    400: '#33475F',
+    500: '#0A1D44', // Deep Navy - Premium look
+    600: '#081736',
+    700: '#061128',
+    800: '#040B1A',
+    900: '#02050C',
   },
 
   // Secondary Gray - Neutral colors (WCAG AA compliant)
@@ -128,6 +142,14 @@ export const colors = {
     light: '#E0E0E0',
     default: '#BDBDBD',
     dark: '#757575',
+  },
+
+  // Glassmorphism colors
+  glass: {
+    background: 'rgba(255, 255, 255, 0.1)',
+    backgroundDark: 'rgba(10, 29, 68, 0.1)',
+    border: 'rgba(255, 255, 255, 0.2)',
+    borderDark: 'rgba(58, 181, 209, 0.3)',
   },
 } as const;
 

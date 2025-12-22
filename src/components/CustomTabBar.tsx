@@ -269,12 +269,14 @@ const styles = StyleSheet.create({
   },
   androidContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(58, 181, 209, 0.1)',
   },
   tabBarContent: {
     flexDirection: 'row',

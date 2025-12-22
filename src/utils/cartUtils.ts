@@ -13,7 +13,7 @@ export const calculateItemSubtotal = (
 ): number => {
   const price = country === COUNTRIES.GERMANY
     ? item.product.price_germany
-    : item.product.price_norway;
+    : item.product.price_denmark;
   return price * item.quantity;
 };
 

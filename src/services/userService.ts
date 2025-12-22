@@ -62,7 +62,7 @@ export const userService = {
    */
   async updateCountryPreference(
     userId: string,
-    country: 'germany' | 'norway'
+    country: 'germany' | 'denmark'
   ): Promise<User> {
     try {
       const supabase = getSupabase();

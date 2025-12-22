@@ -33,7 +33,7 @@ import { debounce } from '../../utils/debounce';
 import { COUNTRIES, PRODUCT_CATEGORIES } from '../../constants';
 import type { Country } from '../../constants';
 import type { ProductCategory } from '../../types';
-import { colors } from '../../theme';
+import { colors, glassmorphism } from '../../theme';
 import {
   isSmallDevice,
   isTablet,
@@ -96,7 +96,7 @@ const AdminProductsScreen = () => {
   
   if (error) {
     return (
-      <View className="flex-1 bg-neutral-50">
+      <View style={glassmorphism.screenBackground}>
         <AppHeader title="Manage Products" />
         <ErrorMessage
           message="Failed to load products. Please try again."
@@ -174,8 +174,8 @@ const AdminProductsScreen = () => {
 
   // Memoized render item
   const renderProductItem = useCallback(({ item, index }: { item: Product; index: number }) => (
-    <AnimatedView animation="fade" delay={index * 50} className="px-4 mb-4">
-      <Card elevation="flat" className="p-4">
+    <AnimatedView animation="fade" delay={index * 50} style={{ paddingHorizontal: padding.horizontal, marginBottom: 16 }}>
+      <Card elevation="flat" glassmorphism className="p-4">
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-1">
             <Text className="text-lg font-semibold text-neutral-900 mb-1">{item.name}</Text>
@@ -184,7 +184,13 @@ const AdminProductsScreen = () => {
           <View className="flex-row gap-2">
             <TouchableOpacity
               onPress={() => handleEditProduct(item.id)}
-              className="p-2 bg-primary-50 rounded-lg"
+              style={{
+                padding: 8,
+                backgroundColor: 'rgba(58, 181, 209, 0.1)',
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: 'rgba(58, 181, 209, 0.2)',
+              }}
               accessibilityRole="button"
               accessibilityLabel="Edit product"
             >
@@ -192,7 +198,13 @@ const AdminProductsScreen = () => {
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => handleDeleteProduct(item)}
-              className="p-2 bg-error-50 rounded-lg"
+              style={{
+                padding: 8,
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: 'rgba(239, 68, 68, 0.2)',
+              }}
               accessibilityRole="button"
               accessibilityLabel="Delete product"
             >
@@ -204,7 +216,7 @@ const AdminProductsScreen = () => {
           <Text className="text-base font-bold text-primary-500">
             {country === COUNTRIES.GERMANY 
               ? `€${item.price_germany.toFixed(2)}` 
-              : `kr${item.price_norway.toFixed(2)}`}
+              : `kr${item.price_denmark.toFixed(2)}`}
           </Text>
           <TouchableOpacity
             onPress={() => handleToggleActive(item)}
@@ -226,7 +238,7 @@ const AdminProductsScreen = () => {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-neutral-50">
+      <View style={glassmorphism.screenBackground}>
         <AppHeader title="Manage Products" />
         <View className="px-4 pt-4">
           <SkeletonCard type="product" count={3} />
@@ -236,12 +248,19 @@ const AdminProductsScreen = () => {
   }
 
   const renderHeader = () => (
-    <AnimatedView animation="fade" delay={0} className="px-4 pt-4 pb-2 bg-white">
+    <AnimatedView animation="fade" delay={0} style={[glassmorphism.panel.container, { paddingHorizontal: padding.horizontal, paddingTop: padding.vertical, paddingBottom: 8 }]}>
       <View className="flex-row items-center justify-between mb-4">
         <Text className="text-2xl font-bold text-neutral-900">Manage Products</Text>
         <TouchableOpacity
           onPress={handleAddProduct}
-          className="w-10 h-10 rounded-full bg-primary-500 justify-center items-center"
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: colors.primary[500],
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
         >
           <Icon name="plus" size={24} color="white" />
         </TouchableOpacity>
@@ -281,7 +300,7 @@ const AdminProductsScreen = () => {
 
   if (filteredProducts.length === 0) {
     return (
-      <View className="flex-1 bg-neutral-50">
+      <View style={glassmorphism.screenBackground}>
         {renderHeader()}
         <EmptyState
           icon="store-off"
@@ -295,7 +314,7 @@ const AdminProductsScreen = () => {
   }
 
   return (
-    <View className="flex-1 bg-neutral-50">
+    <View style={glassmorphism.screenBackground}>
       <AppHeader title="Manage Products" />
       
       <FlatList
@@ -349,9 +368,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#E5E5E5',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderTopWidth: 1.5,
+    borderTopColor: 'rgba(58, 181, 209, 0.2)',
     paddingTop: 12,
     paddingBottom: 12,
     shadowColor: '#000',

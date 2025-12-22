@@ -111,7 +111,9 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, country, onPress }) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(58, 181, 209, 0.15)',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,

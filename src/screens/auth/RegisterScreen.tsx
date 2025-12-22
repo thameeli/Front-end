@@ -87,7 +87,7 @@ const RegisterScreen = () => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-white"
+      style={{ flex: 1, backgroundColor: 'rgba(245, 245, 250, 0.95)' }}
     >
       <ScrollView
         className="flex-1"

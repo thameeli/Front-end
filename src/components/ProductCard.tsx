@@ -52,7 +52,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const price = productService.getProductPrice(product, selectedCountry);
   const originalPrice = selectedCountry === COUNTRIES.GERMANY
     ? (product.original_price_germany || product.price_germany)
-    : (product.original_price_norway || product.price_norway);
+    : (product.original_price_denmark || product.price_denmark);
   const hasDiscount = originalPrice > price;
   const discountPercentage = hasDiscount
     ? Math.round(((originalPrice - price) / originalPrice) * 100)
@@ -102,8 +102,22 @@ const ProductCard: React.FC<ProductCardProps> = ({
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      style={animatedStyle}
-      className="bg-white rounded-xl mb-4 overflow-hidden shadow-md"
+      style={[
+        animatedStyle,
+        {
+          backgroundColor: 'rgba(255, 255, 255, 0.7)',
+          borderRadius: 16,
+          marginBottom: 16,
+          overflow: 'hidden',
+          borderWidth: 1.5,
+          borderColor: 'rgba(58, 181, 209, 0.3)',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.15,
+          shadowRadius: 16,
+          elevation: 6,
+        },
+      ]}
       accessibilityRole="none"
       accessibilityLabel={`${product.name}, ${formatCurrency(price, selectedCountry)}, ${isInStock ? 'in stock' : 'out of stock'}`}
       accessibilityHint={isInStock ? 'Double tap to view product details' : 'Product is currently out of stock'}

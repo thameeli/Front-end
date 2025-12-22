@@ -125,7 +125,9 @@ const WelcomeScreen = () => {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={[colors.primary[500], colors.primary[600]]}
+        colors={[colors.navy[500], colors.primary[500]]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={[styles.gradient, { paddingHorizontal: padding.horizontal * 1.5, paddingVertical: padding.vertical * 3 }]}
       >
         <AnimatedView style={[styles.logoContainer, logoStyle]}>
@@ -246,7 +248,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   buttonText: {
-    color: colors.primary[600],
+    color: colors.primary[500],
     fontWeight: '600',
   },
   skipButton: {

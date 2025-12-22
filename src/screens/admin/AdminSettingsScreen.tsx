@@ -7,6 +7,7 @@ import { RootStackParamList } from '../../types';
 import { AppHeader, Card } from '../../components';
 import { useAuthStore } from '../../store/authStore';
 import { isTablet, getResponsivePadding, getResponsiveFontSize } from '../../utils/responsive';
+import { glassmorphism, colors } from '../../theme';
 
 type AdminSettingsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Settings'>;
 
@@ -20,7 +21,7 @@ const AdminSettingsScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={glassmorphism.screenBackground}>
       <AppHeader title="Settings" showBack />
       <ScrollView 
         style={styles.content}
@@ -36,23 +37,23 @@ const AdminSettingsScreen = () => {
             style={styles.settingItem}
             onPress={() => navigation.navigate('EditProfile')}
           >
-            <Icon name="account-edit" size={24} color="#007AFF" />
+            <Icon name="account-edit" size={24} color={colors.primary[500]} />
             <View style={styles.settingContent}>
               <Text style={styles.settingLabel}>Edit Profile</Text>
               <Text style={styles.settingDescription}>Update your personal information</Text>
             </View>
-            <Icon name="chevron-right" size={24} color="#999" />
+            <Icon name="chevron-right" size={24} color={colors.neutral[400]} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.settingItem}
             onPress={() => navigation.navigate('ChangePassword')}
           >
-            <Icon name="lock-reset" size={24} color="#007AFF" />
+            <Icon name="lock-reset" size={24} color={colors.primary[500]} />
             <View style={styles.settingContent}>
               <Text style={styles.settingLabel}>Change Password</Text>
               <Text style={styles.settingDescription}>Update your password</Text>
             </View>
-            <Icon name="chevron-right" size={24} color="#999" />
+            <Icon name="chevron-right" size={24} color={colors.neutral[400]} />
           </TouchableOpacity>
         </Card>
 
@@ -77,20 +78,20 @@ const AdminSettingsScreen = () => {
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>App Settings</Text>
           <View style={styles.settingItem}>
-            <Icon name="bell-outline" size={24} color="#007AFF" />
+            <Icon name="bell-outline" size={24} color={colors.primary[500]} />
             <View style={styles.settingContent}>
               <Text style={styles.settingLabel}>Notifications</Text>
               <Text style={styles.settingDescription}>Manage notification preferences</Text>
             </View>
-            <Icon name="chevron-right" size={24} color="#999" />
+            <Icon name="chevron-right" size={24} color={colors.neutral[400]} />
           </View>
           <View style={styles.settingItem}>
-            <Icon name="truck-delivery-outline" size={24} color="#007AFF" />
+            <Icon name="truck-delivery-outline" size={24} color={colors.primary[500]} />
             <View style={styles.settingContent}>
               <Text style={styles.settingLabel}>Delivery Settings</Text>
               <Text style={styles.settingDescription}>Configure delivery options</Text>
             </View>
-            <Icon name="chevron-right" size={24} color="#999" />
+            <Icon name="chevron-right" size={24} color={colors.neutral[400]} />
           </View>
         </Card>
 
@@ -114,7 +115,6 @@ const AdminSettingsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   content: {
     flex: 1,
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
-    color: '#000',
+    color: colors.neutral[900],
     marginBottom: 16,
   },
   settingItem: {
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: 'rgba(58, 181, 209, 0.1)',
     gap: 12,
   },
   settingContent: {
@@ -142,12 +142,12 @@ const styles = StyleSheet.create({
   settingLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: colors.neutral[900],
     marginBottom: 2,
   },
   settingDescription: {
     fontSize: 12,
-    color: '#666',
+    color: colors.neutral[600],
   },
   infoRow: {
     flexDirection: 'row',
@@ -155,34 +155,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: 'rgba(58, 181, 209, 0.1)',
   },
   infoLabel: {
     fontSize: 14,
-    color: '#666',
+    color: colors.neutral[600],
   },
   infoValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000',
+    color: colors.neutral[900],
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
     padding: 16,
     borderRadius: 12,
     marginTop: 8,
     marginBottom: 16,
     gap: 8,
-    borderWidth: 1,
-    borderColor: '#FF3B30',
+    borderWidth: 1.5,
+    borderColor: colors.error[500],
+    ...glassmorphism.panel,
   },
   logoutText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FF3B30',
+    color: colors.error[500],
   },
 });
 

@@ -126,16 +126,16 @@ const HomeScreen = () => {
 
     if (!isAuthenticated) {
       Alert.alert(
-        t('auth.loginRequired') || 'Login Required',
-        t('auth.loginToAddCart') || 'Please login or sign up to add items to cart',
+        t('auth.loginRequired') || 'Create Account to Order',
+        t('auth.loginToAddCart') || 'Sign up now to add items to cart and start ordering fresh products!',
         [
-          { text: t('common.cancel') || 'Cancel', style: 'cancel' },
+          { text: t('common.cancel') || 'Continue Browsing', style: 'cancel' },
           {
             text: t('auth.login') || 'Login',
             onPress: () => (navigation as any).navigate('Login'),
           },
           {
-            text: t('auth.register') || 'Sign Up',
+            text: t('auth.register') || 'Sign Up Free',
             onPress: () => (navigation as any).navigate('Register'),
             style: 'default',
           },
@@ -169,8 +169,8 @@ const HomeScreen = () => {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-neutral-50">
-        <View className="px-4 pt-4 pb-2 bg-white">
+      <View style={{ flex: 1, backgroundColor: 'rgba(245, 245, 250, 0.95)' }}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, backgroundColor: 'rgba(255, 255, 255, 0.85)', borderBottomWidth: 1, borderBottomColor: 'rgba(58, 181, 209, 0.1)' }}>
           <SkeletonLoader width="100%" height={48} borderRadius={12} className="mb-4" />
           <SkeletonLoader width="60%" height={32} borderRadius={8} />
         </View>
@@ -183,7 +183,7 @@ const HomeScreen = () => {
 
   if (error) {
     return (
-      <View className="flex-1 bg-white">
+      <View style={{ flex: 1, backgroundColor: 'rgba(245, 245, 250, 0.95)' }}>
         <ErrorMessage
           message={t('errors.failedToLoadProducts') || 'Failed to load products'}
           error={error}
@@ -203,27 +203,63 @@ const HomeScreen = () => {
         onSelectCountry={handleCountrySelect}
       />
 
-      {/* Hero Section */}
-      <AnimatedView animation="fade" delay={0}>
-        <LinearGradient
-          colors={[colors.primary[500], colors.primary[600]]}
-          className="px-6 pt-16 pb-8"
-        >
-          {!isAuthenticated ? (
+      {/* Hero Section - Only show for guest users */}
+      {!isAuthenticated && (
+        <AnimatedView animation="fade" delay={0}>
+          <LinearGradient
+            colors={[colors.navy[500], colors.primary[500]]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            className="px-6 pt-16 pb-8"
+          >
             <View className="items-center">
+              {/* Logo/Icon Section */}
+              <View className="w-20 h-20 rounded-full bg-white/20 justify-center items-center mb-4">
+                <Icon name="fish" size={40} color="white" />
+              </View>
+              
               <Text className="text-3xl font-bold text-white mb-2 text-center">
                 {t('home.welcome') || 'Welcome to Thamili'}
               </Text>
-              <Text className="text-base text-white/90 text-center mb-6">
+              <Text className="text-base text-white/90 text-center mb-2">
                 Fresh fish and vegetables delivered to your door
               </Text>
+              
+              {/* Benefits Row */}
+              <View className="flex-row gap-4 mb-6 mt-2">
+                <View className="items-center">
+                  <Icon name="truck-delivery" size={20} color="white" />
+                  <Text className="text-xs text-white/80 mt-1">Fast Delivery</Text>
+                </View>
+                <View className="items-center">
+                  <Icon name="shield-check" size={20} color="white" />
+                  <Text className="text-xs text-white/80 mt-1">Fresh Quality</Text>
+                </View>
+                <View className="items-center">
+                  <Icon name="cash-multiple" size={20} color="white" />
+                  <Text className="text-xs text-white/80 mt-1">Best Prices</Text>
+                </View>
+              </View>
+
               {selectedCountry && (
-                <View className="bg-white/20 rounded-full px-4 py-2 mb-4">
-                  <Text className="text-sm text-white font-medium">
-                    {t('country.viewing') || 'Viewing products for'} {selectedCountry === COUNTRIES.GERMANY ? 'Germany' : 'Norway'}
+                <View className="bg-white/20 rounded-full px-4 py-2 mb-4 flex-row items-center">
+                  <Icon name="map-marker" size={16} color="white" />
+                  <Text className="text-sm text-white font-medium ml-2">
+                    {t('country.viewing') || 'Viewing products for'} {selectedCountry === COUNTRIES.GERMANY ? 'Germany' : 'Denmark'}
                   </Text>
                 </View>
               )}
+
+              {/* Guest Info Banner */}
+              <View className="bg-white/10 rounded-lg px-4 py-3 mb-4 w-full border border-white/20">
+                <Text className="text-sm text-white text-center font-medium mb-1">
+                  👋 Browse as Guest
+                </Text>
+                <Text className="text-xs text-white/80 text-center">
+                  View products and prices. Sign up to order and get exclusive deals!
+                </Text>
+              </View>
+
               <View className="flex-row gap-3 w-full">
                 <Button
                   title={t('auth.login') || 'Login'}
@@ -240,73 +276,24 @@ const HomeScreen = () => {
                 />
               </View>
             </View>
-          ) : (
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center flex-1">
-                <View className="w-12 h-12 rounded-full bg-white/20 justify-center items-center mr-3">
-                  <Icon name="account-circle" size={28} color="white" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-lg font-bold text-white" numberOfLines={1}>
-                    {user?.name || user?.email || 'User'}
-                  </Text>
-                  <Text className="text-sm text-white/80">
-                    {user?.role === 'admin' ? 'Admin' : 'Customer'} • {country === COUNTRIES.GERMANY ? 'Germany' : 'Norway'}
-                  </Text>
-                </View>
-              </View>
-              <View className="flex-row gap-2">
-                <TouchableOpacity
-                  onPress={() => {
-                    const tabNavigator = navigation.getParent();
-                    if (tabNavigator) {
-                      tabNavigator.navigate('Profile');
-                    } else {
-                      navigation.dispatch(CommonActions.navigate({ name: 'Profile' }));
-                    }
-                  }}
-                  className="w-10 h-10 rounded-full bg-white/20 justify-center items-center"
-                >
-                  <Icon name="account" size={20} color="white" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={async () => {
-                    Alert.alert(
-                      t('auth.logout') || 'Logout',
-                      t('auth.logoutConfirm') || 'Are you sure you want to logout?',
-                      [
-                        { text: t('common.cancel') || 'Cancel', style: 'cancel' },
-                        {
-                          text: t('auth.logout') || 'Logout',
-                          style: 'destructive',
-                          onPress: async () => {
-                            const { logout } = useAuthStore.getState();
-                            await logout();
-                          },
-                        },
-                      ]
-                    );
-                  }}
-                  className="w-10 h-10 rounded-full bg-white/20 justify-center items-center"
-                >
-                  <Icon name="logout" size={20} color="white" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-        </LinearGradient>
-      </AnimatedView>
+          </LinearGradient>
+        </AnimatedView>
+      )}
 
-      {/* Promotional Banner */}
+      {/* Promotional Banner - Only show for authenticated users or make it more guest-friendly */}
       {!searchQuery && selectedCategory === 'all' && (
         <AnimatedView animation="fade" delay={50}>
           <PromotionalBanner
-            title="UP TO 100% FREE DELIVERY"
-            subtitle="Minimum Order Value €50"
-            offerText="Free Shipping on orders above €50"
+            title={isAuthenticated ? "UP TO 100% FREE DELIVERY" : "NEW CUSTOMER OFFER"}
+            subtitle={isAuthenticated ? "Minimum Order Value €50" : "Sign up and get free delivery"}
+            offerText={isAuthenticated ? "Free Shipping on orders above €50" : "Create account to unlock exclusive deals"}
             validUntil="31 DEC 2024"
             onCollect={() => {
-              Alert.alert('Voucher Collected', 'Free delivery voucher has been added to your account!');
+              if (isAuthenticated) {
+                Alert.alert('Voucher Collected', 'Free delivery voucher has been added to your account!');
+              } else {
+                (navigation as any).navigate('Register');
+              }
             }}
             variant="success"
           />
@@ -360,7 +347,19 @@ const HomeScreen = () => {
       )}
 
       {/* Search and Filters */}
-      <AnimatedView animation="slide" delay={150} enterFrom="bottom" className="px-4 pt-4 pb-2 bg-white">
+      <AnimatedView 
+        animation="slide" 
+        delay={150} 
+        enterFrom="bottom" 
+        style={{ 
+          paddingHorizontal: 16, 
+          paddingTop: 16, 
+          paddingBottom: 8, 
+          backgroundColor: 'rgba(255, 255, 255, 0.85)',
+          borderBottomWidth: 1,
+          borderBottomColor: 'rgba(58, 181, 209, 0.1)',
+        }}
+      >
         <SearchBar
           value={searchQuery}
           onChangeText={handleSearchChange}
@@ -386,7 +385,14 @@ const HomeScreen = () => {
       {featuredProducts.length > 0 && !searchQuery && selectedCategory === 'all' && (
         <AnimatedView animation="fade" delay={200} className="px-4 pt-6 pb-2">
           <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-xl font-bold text-neutral-900">Featured Products</Text>
+            <View className="flex-row items-center">
+              <Text className="text-xl font-bold text-neutral-900">Featured Products</Text>
+              {!isAuthenticated && (
+                <View style={{ marginLeft: 8, backgroundColor: colors.primary[100], borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4 }}>
+                  <Text style={{ fontSize: 12, color: colors.primary[600], fontWeight: '500' }}>Browse Now</Text>
+                </View>
+              )}
+            </View>
             <Icon name="star" size={20} color={colors.warning[500]} />
           </View>
           <FlatList
@@ -412,18 +418,31 @@ const HomeScreen = () => {
 
       {/* All Products Header */}
       <View className="px-4 pt-4 pb-2">
-        <Text className="text-xl font-bold text-neutral-900">
-          {searchQuery ? 'Search Results' : selectedCategory !== 'all' ? `${selectedCategory} Products` : 'All Products'}
-        </Text>
-        <Text className="text-sm text-neutral-500 mt-1">
-          {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'} found
-        </Text>
+        <View className="flex-row items-center justify-between">
+          <View className="flex-1">
+            <Text className="text-xl font-bold text-neutral-900">
+              {searchQuery ? 'Search Results' : selectedCategory !== 'all' ? `${selectedCategory} Products` : 'All Products'}
+            </Text>
+            <Text className="text-sm text-neutral-500 mt-1">
+              {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'} found
+            </Text>
+          </View>
+          {!isAuthenticated && filteredProducts.length > 0 && (
+            <TouchableOpacity
+              onPress={() => (navigation as any).navigate('Register')}
+              style={{ backgroundColor: colors.primary[500], borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center' }}
+            >
+              <Icon name="account-plus" size={16} color="white" />
+              <Text style={{ color: 'white', fontSize: 14, fontWeight: '600', marginLeft: 4 }}>Sign Up</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     </>
   );
 
   return (
-    <View className="flex-1 bg-neutral-50">
+    <View style={{ flex: 1, backgroundColor: 'rgba(245, 245, 250, 0.95)' }}>
       {(!countrySelected && !isAuthenticated) ? (
         <View className="flex-1 justify-center items-center px-8">
           <EmptyState
@@ -443,6 +462,7 @@ const HomeScreen = () => {
         </View>
       ) : (
         <FlatList
+          key={`products-${numColumns}`}
           data={filteredProducts}
           keyExtractor={keyExtractor}
           numColumns={numColumns}

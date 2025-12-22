@@ -10,6 +10,7 @@ import { AppHeader, Input, Button, ErrorMessage, LoadingScreen, CountrySelector 
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
 import { isTablet, isSmallDevice, getResponsivePadding } from '../../utils/responsive';
+import { glassmorphism, colors } from '../../theme';
 
 type EditPickupPointScreenRouteProp = RouteProp<RootStackParamList, 'EditPickupPoint'>;
 type EditPickupPointScreenNavigationProp = StackNavigationProp<RootStackParamList, 'EditPickupPoint'>;
@@ -103,7 +104,7 @@ const EditPickupPointScreen = () => {
 
   if (!pickupPoint) {
     return (
-      <View style={styles.container}>
+      <View style={glassmorphism.screenBackground}>
         <AppHeader title="Edit Pickup Point" showBack />
         <ErrorMessage message="Pickup point not found" />
       </View>
@@ -111,7 +112,7 @@ const EditPickupPointScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={glassmorphism.screenBackground}>
       <AppHeader title="Edit Pickup Point" showBack />
       <ScrollView 
         style={styles.content}
@@ -212,7 +213,7 @@ const EditPickupPointScreen = () => {
             <Icon
               name={active ? 'check-circle' : 'close-circle'}
               size={20}
-              color={active ? '#34C759' : '#FF3B30'}
+              color={active ? colors.success[500] : colors.error[500]}
             />
             <Text style={[styles.activeText, active && styles.activeTextActive]}>
               {active ? 'Active' : 'Inactive'}
@@ -236,7 +237,6 @@ const EditPickupPointScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   content: {
     flex: 1,
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000',
+    color: colors.neutral[900],
     marginBottom: 12,
   },
   coordinatesSection: {
@@ -269,30 +269,31 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000',
+    color: colors.neutral[900],
     marginBottom: 8,
   },
   activeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(58, 181, 209, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
     gap: 8,
+    ...glassmorphism.panel,
   },
   activeButtonActive: {
-    borderColor: '#34C759',
-    backgroundColor: '#e6f9ed',
+    borderColor: colors.success[500],
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
   },
   activeText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: colors.neutral[600],
   },
   activeTextActive: {
-    color: '#34C759',
+    color: colors.success[600],
   },
   submitButton: {
     marginTop: 8,

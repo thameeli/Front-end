@@ -144,31 +144,55 @@ const Button: React.FC<ButtonProps> = ({
         opacity: pressed ? 0.3 : 0,
       };
 
-  const getVariantClasses = () => {
+  const getVariantStyle = (): ViewStyle => {
     switch (variant) {
       case 'primary':
-        return 'bg-primary-500';
+        return {
+          backgroundColor: colors.primary[500], // #3AB5D1 Cyan
+          borderWidth: 0,
+        };
       case 'secondary':
-        return 'bg-secondary-500';
+        return {
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          borderColor: colors.primary[500], // Cyan border
+        };
       case 'outline':
-        return 'bg-transparent border-2 border-primary-500';
+        return {
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          borderColor: colors.primary[500],
+        };
       case 'danger':
-        return 'bg-error-500';
+        return {
+          backgroundColor: colors.error[500],
+          borderWidth: 0,
+        };
       case 'ghost':
-        return 'bg-transparent';
+        return {
+          backgroundColor: 'transparent',
+          borderWidth: 0,
+        };
       default:
-        return 'bg-primary-500';
+        return {
+          backgroundColor: colors.primary[500],
+          borderWidth: 0,
+        };
     }
   };
 
-  const getTextColor = () => {
+  const getTextColorStyle = (): TextStyle => {
     switch (variant) {
       case 'outline':
-        return 'text-primary-500';
+      case 'secondary':
       case 'ghost':
-        return 'text-primary-500';
+        return {
+          color: colors.primary[500], // Cyan text
+        };
       default:
-        return 'text-white';
+        return {
+          color: '#fff', // White text for primary
+        };
     }
   };
 
@@ -205,9 +229,12 @@ const Button: React.FC<ButtonProps> = ({
   // Always use Pressable directly to avoid displayName issues
   const containerStyle = [
     baseStyle,
+    getVariantStyle(),
     animatedStyle,
     style,
   ].filter(Boolean);
+
+  const textColorStyle = getTextColorStyle();
 
   return (
     <Pressable
@@ -216,10 +243,7 @@ const Button: React.FC<ButtonProps> = ({
       onPressOut={handlePressOut}
       disabled={disabled || loading}
       style={containerStyle}
-      className={`
-        ${getVariantClasses()}
-        ${getSizeClasses()}
-      `}
+      className={getSizeClasses()}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel || title}
       accessibilityHint={accessibilityHint}
@@ -236,7 +260,7 @@ const Button: React.FC<ButtonProps> = ({
               width: '200%',
               height: '200%',
               borderRadius: 999,
-              backgroundColor: variant === 'outline' || variant === 'ghost' 
+              backgroundColor: variant === 'outline' || variant === 'ghost' || variant === 'secondary'
                 ? colors.primary[200] 
                 : 'rgba(255, 255, 255, 0.3)',
               top: '50%',
@@ -253,7 +277,7 @@ const Button: React.FC<ButtonProps> = ({
             width: '200%',
             height: '200%',
             borderRadius: 999,
-            backgroundColor: variant === 'outline' || variant === 'ghost' 
+            backgroundColor: variant === 'outline' || variant === 'ghost' || variant === 'secondary'
               ? colors.primary[200] 
               : 'rgba(255, 255, 255, 0.3)',
             top: '50%',
@@ -276,11 +300,10 @@ const Button: React.FC<ButtonProps> = ({
           {icon && <Text className="mr-2">{icon}</Text>}
           <Text
             className={`
-              ${getTextColor()}
               ${getTextSize()}
               font-semibold
             `}
-            style={textStyle}
+            style={[textColorStyle, textStyle]}
           >
             {title}
           </Text>

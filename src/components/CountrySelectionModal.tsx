@@ -73,30 +73,30 @@ const CountrySelectionModal: React.FC<CountrySelectionModalProps> = ({
             <TouchableOpacity
               style={[
                 styles.option,
-                selectedCountry === COUNTRIES.NORWAY && styles.optionActive,
+                selectedCountry === COUNTRIES.DENMARK && styles.optionActive,
               ]}
-              onPress={() => onSelectCountry(COUNTRIES.NORWAY)}
+              onPress={() => onSelectCountry(COUNTRIES.DENMARK)}
             >
               <View style={styles.optionContent}>
                 <Icon
                   name="flag"
                   size={32}
-                  color={selectedCountry === COUNTRIES.NORWAY ? '#007AFF' : '#666'}
+                  color={selectedCountry === COUNTRIES.DENMARK ? '#007AFF' : '#666'}
                 />
                 <View style={styles.optionTextContainer}>
                   <Text
                     style={[
                       styles.optionText,
-                      selectedCountry === COUNTRIES.NORWAY && styles.optionTextActive,
+                      selectedCountry === COUNTRIES.DENMARK && styles.optionTextActive,
                     ]}
                   >
-                    {t('profile.norway') || 'Norway'}
+                    {t('profile.denmark') || 'Denmark'}
                   </Text>
                   <Text style={styles.optionSubtext}>
-                    {t('country.norwayDescription') || 'Products and prices for Norway'}
+                    {t('country.denmarkDescription') || 'Products and prices for Denmark'}
                   </Text>
                 </View>
-                {selectedCountry === COUNTRIES.NORWAY && (
+                {selectedCountry === COUNTRIES.DENMARK && (
                   <Icon name="check-circle" size={24} color="#007AFF" />
                 )}
               </View>

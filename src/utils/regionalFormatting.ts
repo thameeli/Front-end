@@ -10,7 +10,7 @@ import type { Country } from '../constants';
 /**
  * Format currency based on country
  * Germany: EUR (€)
- * Denmark/Norway: DKK/NOK (kr)
+ * Denmark: DKK (kr)
  */
 export const formatCurrency = (
   amount: number,

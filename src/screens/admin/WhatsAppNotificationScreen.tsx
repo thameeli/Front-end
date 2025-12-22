@@ -9,6 +9,7 @@ import { notificationService } from '../../services/notificationService';
 import { AppHeader, Input, Button, LoadingScreen, ErrorMessage, Card } from '../../components';
 import { useAuthStore } from '../../store/authStore';
 import { isTablet, getResponsivePadding, getResponsiveFontSize } from '../../utils/responsive';
+import { glassmorphism } from '../../theme';
 
 type WhatsAppNotificationScreenRouteProp = RouteProp<RootStackParamList, 'OrderDetails'>;
 type WhatsAppNotificationScreenNavigationProp = StackNavigationProp<RootStackParamList, 'OrderDetails'>;
@@ -83,7 +84,7 @@ const WhatsAppNotificationScreen = () => {
 
   if (!order) {
     return (
-      <View style={styles.container}>
+      <View style={glassmorphism.screenBackground}>
         <AppHeader title="Send WhatsApp Notification" showBack />
         <ErrorMessage message="Order not found" />
       </View>
@@ -91,7 +92,7 @@ const WhatsAppNotificationScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={glassmorphism.screenBackground}>
       <AppHeader title="Send WhatsApp Notification" showBack />
       <ScrollView 
         style={styles.content}
@@ -153,7 +154,6 @@ const WhatsAppNotificationScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   content: {
     flex: 1,

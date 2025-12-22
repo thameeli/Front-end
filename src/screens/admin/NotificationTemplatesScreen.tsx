@@ -6,6 +6,7 @@ import { AppHeader, Card, Button, EmptyState, LoadingScreen, ErrorMessage } from
 import { NotificationTemplate } from '../../types/notifications';
 import { notificationService } from '../../services/notificationService';
 import { isTablet, getResponsivePadding } from '../../utils/responsive';
+import { glassmorphism, colors } from '../../theme';
 
 const NotificationTemplatesScreen = () => {
   const queryClient = useQueryClient();
@@ -44,7 +45,7 @@ const NotificationTemplatesScreen = () => {
 
   if (error) {
     return (
-      <View style={styles.container}>
+      <View style={glassmorphism.screenBackground}>
         <AppHeader title="Notification Templates" />
         <ErrorMessage
           message="Failed to load templates. Please try again."
@@ -55,7 +56,7 @@ const NotificationTemplatesScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={glassmorphism.screenBackground}>
       <AppHeader title="Notification Templates" />
 
       {templates.length === 0 ? (
@@ -84,7 +85,7 @@ const NotificationTemplatesScreen = () => {
                   <Icon
                     name={item.active ? 'check-circle' : 'close-circle'}
                     size={20}
-                    color={item.active ? '#34C759' : '#FF3B30'}
+                    color={item.active ? colors.success[500] : colors.error[500]}
                   />
                   <Text
                     style={[styles.activeText, item.active && styles.activeTextActive]}
@@ -130,7 +131,6 @@ const NotificationTemplatesScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   listContent: {
     // padding will be set dynamically
@@ -150,35 +150,36 @@ const styles = StyleSheet.create({
   templateName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#000',
+    color: colors.neutral[900],
     marginBottom: 4,
   },
   templateType: {
     fontSize: 12,
-    color: '#666',
+    color: colors.neutral[600],
     textTransform: 'uppercase',
   },
   activeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 8,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: 'rgba(58, 181, 209, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
     gap: 4,
+    ...glassmorphism.panel,
   },
   activeButtonActive: {
-    borderColor: '#34C759',
-    backgroundColor: '#e6f9ed',
+    borderColor: colors.success[500],
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
   },
   activeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#666',
+    color: colors.neutral[600],
   },
   activeTextActive: {
-    color: '#34C759',
+    color: colors.success[600],
   },
   templateContent: {
     marginTop: 8,
@@ -186,13 +187,13 @@ const styles = StyleSheet.create({
   templateLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#666',
+    color: colors.neutral[600],
     marginTop: 8,
     marginBottom: 4,
   },
   templateText: {
     fontSize: 14,
-    color: '#000',
+    color: colors.neutral[900],
     lineHeight: 20,
   },
   variablesContainer: {
@@ -202,16 +203,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   variableTag: {
-    backgroundColor: '#f0f7ff',
+    backgroundColor: 'rgba(58, 181, 209, 0.1)',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#007AFF',
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: colors.primary[500],
   },
   variableText: {
     fontSize: 12,
-    color: '#007AFF',
+    color: colors.primary[600],
     fontWeight: '600',
   },
 });

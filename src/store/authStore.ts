@@ -118,18 +118,48 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           code: response.error.code,
         });
         
-        // Provide more helpful error messages
-        let errorMessage = response.error.message;
+        // Provide more helpful, user-friendly error messages
+        let errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+        
+        // Handle different error types
         if (response.error.status === 400) {
-          if (response.error.message?.includes('Invalid login credentials')) {
-            errorMessage = 'Invalid email or password. Please check your credentials.';
-          } else if (response.error.message?.includes('Email not confirmed')) {
-            errorMessage = 'Please confirm your email address before logging in.';
+          const errorMsg = response.error.message?.toLowerCase() || '';
+          if (errorMsg.includes('invalid login credentials') || 
+              errorMsg.includes('invalid password') ||
+              errorMsg.includes('wrong password') ||
+              errorMsg.includes('incorrect password')) {
+            errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+          } else if (errorMsg.includes('email not confirmed') || 
+                     errorMsg.includes('email confirmation')) {
+            errorMessage = 'Please confirm your email address before logging in. Check your inbox for the confirmation email.';
+          } else if (errorMsg.includes('user not found') || 
+                     errorMsg.includes('no user found')) {
+            errorMessage = 'No account found with this email address. Please check your email or register for a new account.';
+          } else if (errorMsg.includes('too many requests') || 
+                     errorMsg.includes('rate limit')) {
+            errorMessage = 'Too many login attempts. Please wait a few minutes and try again.';
           } else {
-            errorMessage = response.error.message || 'Invalid login credentials';
+            // Use the original message if it's user-friendly, otherwise use default
+            errorMessage = response.error.message || errorMessage;
+          }
+        } else if (response.error.status === 401) {
+          errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+        } else if (response.error.status === 429) {
+          errorMessage = 'Too many login attempts. Please wait a few minutes and try again.';
+        } else if (response.error.status >= 500) {
+          errorMessage = 'Server error. Please try again in a few moments.';
+        } else {
+          // For other errors, try to use the message if it's clear
+          const errorMsg = response.error.message?.toLowerCase() || '';
+          if (errorMsg.includes('network') || errorMsg.includes('connection')) {
+            errorMessage = 'Network error. Please check your internet connection and try again.';
+          } else {
+            errorMessage = response.error.message || 'Login failed. Please try again.';
           }
         }
         
+        // Make sure to set loading to false before returning
+        set({ isLoading: false });
         return { success: false, error: errorMessage };
       }
 
@@ -163,7 +193,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           responseKeys: Object.keys(response),
           responseDataKeys: response.data ? Object.keys(response.data) : [],
         });
-        return { success: false, error: 'Login failed: No user data received' };
+        set({ isLoading: false });
+        return { success: false, error: 'Login failed: No user data received. Please try again.' };
       }
 
       // If no session in response, try to get it from auth (Supabase persists it)
@@ -207,7 +238,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           sessionKeys: finalSession ? Object.keys(finalSession) : [],
           responseStructure: JSON.stringify(response).substring(0, 200),
         });
-        return { success: false, error: 'Login failed: No session token received. Please try again.' };
+        set({ isLoading: false });
+        return { success: false, error: 'Login failed: Unable to create session. Please try again.' };
       }
 
       console.log('✅ [authStore] User and session received, fetching profile...');
@@ -218,40 +250,95 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       let profileError: any = null;
       
       try {
+        console.log('🔍 [authStore] Fetching profile from database for user:', user.id);
         const { data, error } = await supabase
           .from('users')
           .select('*')
           .eq('id', user.id)
           .single();
         
-        profile = data;
-        profileError = error;
+        if (error) {
+          // Log error but don't throw - use fallback
+          console.error('❌ [authStore] Profile fetch error:', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint,
+          });
+          profileError = error;
+        } else if (data) {
+          profile = data;
+          console.log('✅ [authStore] Profile fetched successfully:', {
+            email: profile.email,
+            role: profile.role,
+            name: profile.name,
+          });
+        } else {
+          console.warn('⚠️ [authStore] Profile fetch returned no data');
+        }
       } catch (err: any) {
         profileError = err;
-        console.warn('⚠️ [authStore] Profile fetch error, trying alternative method:', err.message);
-        
-        // Try alternative: use a stored procedure or direct query
-        // For now, we'll use user metadata as fallback
+        console.error('❌ [authStore] Profile fetch exception:', err.message, err);
+      }
+      
+      // If profile fetch failed, try to fetch again with retry
+      if (!profile && profileError) {
+        console.log('🔄 [authStore] Retrying profile fetch...');
         try {
-          // Try to get from user metadata if available
-          if (user.user_metadata?.role) {
-            profile = { role: user.user_metadata.role };
+          const { data: retryData, error: retryError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+          
+          if (!retryError && retryData) {
+            profile = retryData;
+            console.log('✅ [authStore] Profile fetched on retry:', {
+              email: profile.email,
+              role: profile.role,
+            });
+          } else {
+            console.error('❌ [authStore] Retry also failed:', retryError?.message);
           }
+        } catch (retryErr) {
+          console.error('❌ [authStore] Retry exception:', retryErr);
+        }
+      }
+
+      // Fallback: use user metadata if profile fetch failed (but warn about it)
+      if (!profile && user.user_metadata) {
+        try {
+          profile = {
+            id: user.id,
+            email: user.email,
+            role: user.user_metadata.role || 'customer',
+            country_preference: user.user_metadata.country_preference || 'germany',
+            phone: user.user_metadata.phone || null,
+            created_at: user.created_at,
+            updated_at: user.updated_at,
+          };
+          console.warn('⚠️ [authStore] Using user metadata as profile fallback - ROLE MAY BE INCORRECT!');
+          console.warn('⚠️ [authStore] Database profile fetch failed, using metadata role:', profile.role);
         } catch (metaErr) {
-          console.warn('⚠️ [authStore] Could not get role from metadata');
+          console.warn('⚠️ [authStore] Could not create profile from metadata');
         }
       }
 
       if (profileError && !profile) {
-        console.warn('⚠️ [authStore] Profile fetch error (continuing anyway):', profileError?.message || 'Unknown error');
+        console.error('❌ [authStore] Profile fetch error (continuing anyway):', profileError?.message || 'Unknown error');
+        console.error('❌ [authStore] This may cause incorrect role assignment. Check database connection and RLS policies.');
       }
+
+      // Normalize role to lowercase for consistent comparison
+      const rawRole = profile?.role || user.user_metadata?.role || 'customer';
+      const normalizedRole = typeof rawRole === 'string' ? rawRole.toLowerCase().trim() : 'customer';
 
       const userData: User = {
         id: user.id,
         email: user.email || email,
         phone: user.phone || profile?.phone,
         name: profile?.name || user.user_metadata?.name || user.email?.split('@')[0],
-        role: profile?.role || user.user_metadata?.role || 'customer',
+        role: normalizedRole,
         country_preference: profile?.country_preference || user.user_metadata?.country_preference,
         created_at: user.created_at,
       };
@@ -261,11 +348,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         email: userData.email,
         name: userData.name,
         role: userData.role,
+        rawRole: rawRole,
+        profileRole: profile?.role,
+        metadataRole: user.user_metadata?.role,
+        isAdmin: userData.role === 'admin',
       });
+      
+      // IMPORTANT: If user should be admin but role is 'customer', log warning
+      if (userData.email && (userData.email.includes('admin') || userData.email.includes('@admin'))) {
+        console.warn('⚠️ [authStore] Admin email detected but role is:', userData.role);
+        console.warn('⚠️ [authStore] Please update role in database using:');
+        console.warn(`⚠️ UPDATE users SET role = 'admin' WHERE email = '${userData.email}';`);
+      }
 
-      // Set user and token in storage first
+      // IMPORTANT: Clear old cached data first to prevent stale role
+      await AsyncStorage.removeItem(STORAGE_KEYS.USER_DATA);
+      
+      // Set user and token in storage with fresh data
       await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
       await AsyncStorage.setItem(STORAGE_KEYS.USER_TOKEN, finalSession.access_token);
+      
+      console.log('💾 [authStore] User data saved to storage with role:', userData.role);
 
       // Set user and token in state
       get().setUser(userData);
@@ -286,12 +389,39 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         hasUser: !!currentState.user,
         hasToken: !!currentState.token,
         userId: currentState.user?.id,
+        userEmail: currentState.user?.email,
+        userRole: currentState.user?.role,
+        isAdmin: currentState.user?.role === 'admin',
       });
+      
+      // Final check: Warn if role doesn't match expected
+      if (currentState.user && currentState.user.role !== 'admin' && profile && profile.role === 'admin') {
+        console.error('❌ [authStore] CRITICAL: Database has admin role but app state shows:', currentState.user.role);
+        console.error('❌ [authStore] This is a state sync issue. Try logging out and back in.');
+      }
       
       return { success: true };
     } catch (error: any) {
       console.error('❌ [authStore] Login exception:', error);
-      return { success: false, error: error.message || 'An error occurred' };
+      
+      // Provide user-friendly error messages
+      let errorMessage = 'An unexpected error occurred. Please try again.';
+      
+      if (error.message) {
+        const errorMsg = error.message.toLowerCase();
+        if (errorMsg.includes('network') || errorMsg.includes('connection') || errorMsg.includes('fetch')) {
+          errorMessage = 'Network error. Please check your internet connection and try again.';
+        } else if (errorMsg.includes('timeout')) {
+          errorMessage = 'Request timed out. Please check your connection and try again.';
+        } else if (errorMsg.includes('invalid') || errorMsg.includes('credentials')) {
+          errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      set({ isLoading: false });
+      return { success: false, error: errorMessage };
     } finally {
       set({ isLoading: false });
     }
@@ -430,7 +560,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       if (token && userData) {
         const user = JSON.parse(userData);
+        // Normalize role to lowercase for consistent comparison
+        if (user.role) {
+          user.role = typeof user.role === 'string' ? user.role.toLowerCase().trim() : 'customer';
+        }
         set({ user, token, isAuthenticated: true });
+        console.log('✅ [authStore] Session loaded:', {
+          email: user.email,
+          role: user.role,
+        });
       }
 
       set({ hasCompletedOnboarding: onboardingCompleted === 'true' });
@@ -463,16 +601,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           .single();
 
         if (profile) {
+          // Normalize role to lowercase for consistent comparison
+          const normalizedRole = profile.role 
+            ? (typeof profile.role === 'string' ? profile.role.toLowerCase().trim() : 'customer')
+            : 'customer';
+          
           const user: User = {
             id: profile.id,
             email: profile.email,
             phone: profile.phone,
             name: profile.name,
-            role: profile.role,
+            role: normalizedRole,
             country_preference: profile.country_preference,
             created_at: profile.created_at,
           };
+          console.log('✅ [authStore] Profile refreshed from database:', {
+            email: user.email,
+            role: user.role,
+            rawRole: profile.role,
+          });
           get().setUser(user);
+          // Update stored user data with normalized role
+          await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
         }
         get().setToken(session.access_token);
       } else {

@@ -8,7 +8,7 @@
 -- ============================================
 -- 1. PRODUCTS - Fresh Fish
 -- ============================================
-INSERT INTO products (name, description, category, price_germany, price_norway, stock, active) VALUES
+INSERT INTO products (name, description, category, price_germany, price_denmark, stock, active) VALUES
 ('Salmon Fillet', 'Fresh Atlantic salmon fillet, 500g', 'fresh', 12.99, 149.00, 50, true),
 ('Tuna Steak', 'Premium tuna steak, 400g', 'fresh', 15.99, 179.00, 30, true),
 ('Cod Fillet', 'Fresh cod fillet, 500g', 'fresh', 9.99, 119.00, 60, true),
@@ -21,7 +21,7 @@ INSERT INTO products (name, description, category, price_germany, price_norway, 
 -- ============================================
 -- 2. PRODUCTS - Frozen Fish
 -- ============================================
-INSERT INTO products (name, description, category, price_germany, price_norway, stock, active) VALUES
+INSERT INTO products (name, description, category, price_germany, price_denmark, stock, active) VALUES
 ('Frozen Salmon Portions', 'Frozen salmon portions, 1kg', 'frozen', 10.99, 129.00, 100, true),
 ('Frozen Cod Fillets', 'Frozen cod fillets, 1kg', 'frozen', 8.99, 109.00, 120, true),
 ('Frozen Prawns', 'Frozen prawns, 1kg', 'frozen', 15.99, 189.00, 80, true),
@@ -31,7 +31,7 @@ INSERT INTO products (name, description, category, price_germany, price_norway, 
 -- ============================================
 -- 3. PRODUCTS - Fresh Vegetables
 -- ============================================
-INSERT INTO products (name, description, category, price_germany, price_norway, stock, active) VALUES
+INSERT INTO products (name, description, category, price_germany, price_denmark, stock, active) VALUES
 ('Tomatoes', 'Fresh red tomatoes, 1kg', 'fresh', 2.99, 35.00, 200, true),
 ('Cucumber', 'Fresh cucumber, 1kg', 'fresh', 1.99, 25.00, 180, true),
 ('Carrots', 'Fresh carrots, 1kg', 'fresh', 1.49, 19.00, 250, true),
@@ -46,7 +46,7 @@ INSERT INTO products (name, description, category, price_germany, price_norway, 
 -- ============================================
 -- 4. PRODUCTS - Frozen Vegetables
 -- ============================================
-INSERT INTO products (name, description, category, price_germany, price_norway, stock, active) VALUES
+INSERT INTO products (name, description, category, price_germany, price_denmark, stock, active) VALUES
 ('Frozen Peas', 'Frozen peas, 500g', 'frozen', 1.99, 24.00, 200, true),
 ('Frozen Corn', 'Frozen corn, 500g', 'frozen', 1.99, 24.00, 180, true),
 ('Frozen Mixed Vegetables', 'Frozen mixed vegetables, 1kg', 'frozen', 2.99, 35.00, 160, true),
@@ -64,14 +64,14 @@ INSERT INTO pickup_points (name, address, latitude, longitude, country, delivery
 ('Cologne Cathedral', 'Domkloster 4, 50667 Köln, Germany', 50.9413, 6.9583, 'germany', 2.50, true);
 
 -- ============================================
--- 6. PICKUP POINTS - Norway
+-- 6. PICKUP POINTS - Denmark
 -- ============================================
 INSERT INTO pickup_points (name, address, latitude, longitude, country, delivery_fee, active) VALUES
-('Oslo Central Station', 'Jernbanetorget 1, 0154 Oslo, Norway', 59.9115, 10.7522, 'norway', 30.00, true),
-('Bergen Fish Market', 'Torget, 5014 Bergen, Norway', 60.3913, 5.3221, 'norway', 35.00, true),
-('Trondheim Harbor', 'Havnegata 1, 7010 Trondheim, Norway', 63.4305, 10.3951, 'norway', 40.00, true),
-('Stavanger City Center', 'Olav V gate 3, 4005 Stavanger, Norway', 58.9699, 5.7331, 'norway', 35.00, true),
-('Tromsø Arctic', 'Storgata 1, 9008 Tromsø, Norway', 69.6492, 18.9553, 'norway', 50.00, true);
+('Copenhagen Central Station', 'Bernstorffsgade 1, 1570 København, Denmark', 55.6761, 12.5683, 'denmark', 30.00, true),
+('Aarhus Harbor', 'Marselis Boulevard 130, 8000 Aarhus, Denmark', 56.1629, 10.2039, 'denmark', 35.00, true),
+('Odense City Center', 'Flakhaven 2, 5000 Odense, Denmark', 55.3959, 10.3883, 'denmark', 40.00, true),
+('Aalborg Main Square', 'Gammeltorv 1, 9000 Aalborg, Denmark', 57.0488, 9.9217, 'denmark', 35.00, true),
+('Esbjerg Fish Market', 'Torvegade 1, 6700 Esbjerg, Denmark', 55.4670, 8.4519, 'denmark', 50.00, true);
 
 -- ============================================
 -- NOTES:
@@ -83,7 +83,7 @@ INSERT INTO pickup_points (name, address, latitude, longitude, country, delivery
 --
 -- 2. Prices: 
 --    - Germany prices are in EUR
---    - Norway prices are in NOK (Norwegian Krone)
+--    - Denmark prices are in DKK (Danish Krone)
 --    - Adjust prices according to your market
 --
 -- 3. Stock: Update stock levels as needed

@@ -8,7 +8,7 @@ function getSupabase() {
 
 export interface CreateOrderData {
   user_id: string;
-  country: 'germany' | 'norway';
+  country: 'germany' | 'denmark';
   payment_method: PaymentMethod;
   pickup_point_id?: string;
   delivery_address?: string;

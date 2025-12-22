@@ -156,8 +156,8 @@ const CountrySelectionScreen = () => {
       description: 'Shop in Euros',
     },
     {
-      key: COUNTRIES.NORWAY,
-      name: 'Norway',
+      key: COUNTRIES.DENMARK,
+      name: 'Denmark',
       flag: '🇳🇴',
       currency: 'DKK',
       description: 'Shop in Danish Krone',

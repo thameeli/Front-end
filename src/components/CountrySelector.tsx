@@ -50,24 +50,24 @@ const CountrySelector: React.FC<CountrySelectorProps> = ({
         <TouchableOpacity
           style={[
             styles.option,
-            selectedCountry === COUNTRIES.NORWAY && styles.optionActive,
+            selectedCountry === COUNTRIES.DENMARK && styles.optionActive,
           ]}
-          onPress={() => onSelectCountry(COUNTRIES.NORWAY)}
+          onPress={() => onSelectCountry(COUNTRIES.DENMARK)}
         >
           <Icon
             name="flag"
             size={24}
-            color={selectedCountry === COUNTRIES.NORWAY ? '#007AFF' : '#666'}
+            color={selectedCountry === COUNTRIES.DENMARK ? '#007AFF' : '#666'}
           />
           <Text
             style={[
               styles.optionText,
-              selectedCountry === COUNTRIES.NORWAY && styles.optionTextActive,
+              selectedCountry === COUNTRIES.DENMARK && styles.optionTextActive,
             ]}
           >
-            {t('profile.norway')}
+            {t('profile.denmark')}
           </Text>
-          {selectedCountry === COUNTRIES.NORWAY && (
+          {selectedCountry === COUNTRIES.DENMARK && (
             <Icon name="check-circle" size={20} color="#007AFF" />
           )}
         </TouchableOpacity>

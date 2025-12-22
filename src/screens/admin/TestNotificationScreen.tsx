@@ -13,6 +13,7 @@ const getPushNotificationService = async () => {
 };
 import { useAuthStore } from '../../store/authStore';
 import { isTablet, getResponsivePadding, getResponsiveFontSize } from '../../utils/responsive';
+import { glassmorphism, colors } from '../../theme';
 
 const TestNotificationScreen = () => {
   const { user } = useAuthStore();
@@ -64,7 +65,7 @@ const TestNotificationScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={glassmorphism.screenBackground}>
       <AppHeader title="Test Notification" showBack />
       <ScrollView 
         style={styles.content}
@@ -115,7 +116,6 @@ const TestNotificationScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   content: {
     flex: 1,
@@ -126,12 +126,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
-    color: '#000',
+    color: colors.neutral[900],
     marginBottom: 8,
   },
   description: {
     fontSize: 14,
-    color: '#666',
+    color: colors.neutral[600],
     lineHeight: 20,
   },
   input: {

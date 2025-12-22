@@ -55,7 +55,7 @@ WHERE role = 'admin';
 -- ============================================
 
 -- View all active products
-SELECT id, name, category, price_germany, price_norway, stock, active
+SELECT id, name, category, price_germany, price_denmark, stock, active
 FROM products
 WHERE active = true
 ORDER BY category, name;
@@ -77,8 +77,8 @@ FROM products
 WHERE active = true
 ORDER BY name;
 
--- Get products for Norway
-SELECT id, name, price_norway as price, stock
+-- Get products for Denmark
+SELECT id, name, price_denmark as price, stock
 FROM products
 WHERE active = true
 ORDER BY name;
@@ -222,7 +222,7 @@ ORDER BY ds.estimated_time;
 -- TEST CREATE: Insert a new product (admin only)
 -- Uncomment to test:
 /*
-INSERT INTO products (name, description, category, price_germany, price_norway, stock, active)
+INSERT INTO products (name, description, category, price_germany, price_denmark, stock, active)
 VALUES ('Test Product', 'Test description', 'fresh', 10.99, 129.00, 50, true)
 RETURNING id, name;
 */

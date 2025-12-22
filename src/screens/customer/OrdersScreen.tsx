@@ -129,7 +129,7 @@ const OrdersScreen = () => {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-neutral-50">
+      <View style={{ flex: 1, backgroundColor: 'rgba(245, 245, 250, 0.95)' }}>
         <AppHeader title="My Orders" />
         <View style={{ paddingHorizontal: padding.horizontal, paddingTop: padding.vertical }}>
           <SkeletonCard type="order" count={3} />
@@ -140,7 +140,7 @@ const OrdersScreen = () => {
 
   if (error) {
     return (
-      <View className="flex-1 bg-neutral-50">
+      <View style={{ flex: 1, backgroundColor: 'rgba(245, 245, 250, 0.95)' }}>
         <AppHeader title="My Orders" />
         <ErrorMessage
           message="Failed to load orders. Please try again."
@@ -192,7 +192,7 @@ const OrdersScreen = () => {
 
   if (filteredOrders.length === 0) {
     return (
-      <View className="flex-1 bg-neutral-50">
+      <View style={{ flex: 1, backgroundColor: 'rgba(245, 245, 250, 0.95)' }}>
         {renderHeader()}
         <EmptyState
           icon={searchQuery ? "magnify" : "package-variant"}

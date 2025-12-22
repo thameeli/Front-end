@@ -107,7 +107,7 @@ const ProductDetailsScreen = () => {
 
   if (error || !product) {
     return (
-      <View className="flex-1 bg-white">
+      <View style={{ flex: 1, backgroundColor: 'rgba(245, 245, 250, 0.95)' }}>
         <AppHeader title="Product Details" showBack />
         <ErrorMessage 
           message="Failed to load product details. Please try again."

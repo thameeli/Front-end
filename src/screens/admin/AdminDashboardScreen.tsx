@@ -20,7 +20,7 @@ import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
 import type { Order } from '../../types';
 import { RootStackParamList } from '../../types';
-import { colors } from '../../theme';
+import { colors, glassmorphism } from '../../theme';
 import {
   isSmallDevice,
   isTablet,
@@ -105,7 +105,7 @@ const AdminDashboardScreen = () => {
 
   if (loadingOrders) {
     return (
-      <View className="flex-1 bg-neutral-50">
+      <View style={glassmorphism.screenBackground}>
         <AppHeader title="Admin Dashboard" />
         <View className="px-4 pt-4">
           <SkeletonCard type="custom" count={6} />
@@ -119,7 +119,7 @@ const AdminDashboardScreen = () => {
   };
 
   return (
-    <View className="flex-1 bg-neutral-50">
+    <View style={glassmorphism.screenBackground}>
       <AppHeader title="Admin Dashboard" />
       
       <ScrollView
@@ -168,7 +168,7 @@ const AdminDashboardScreen = () => {
 
           {/* Quick Actions */}
           <AnimatedView animation="slide" delay={100} enterFrom="bottom" className="mb-4">
-            <Card elevation="raised" className="p-4">
+            <Card elevation="raised" glassmorphism className="p-4">
               <Text className="text-lg font-bold text-neutral-900 mb-4">
                 Quick Actions
               </Text>
@@ -186,10 +186,10 @@ const AdminDashboardScreen = () => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     padding: 16,
-                    backgroundColor: colors.primary[50],
+                    backgroundColor: 'rgba(58, 181, 209, 0.1)',
                     borderRadius: 12,
-                    borderWidth: 2,
-                    borderColor: colors.primary[200],
+                    borderWidth: 1.5,
+                    borderColor: 'rgba(58, 181, 209, 0.3)',
                   }}
                 >
                   <Icon name="store" size={24} color={colors.primary[500]} />
@@ -211,17 +211,17 @@ const AdminDashboardScreen = () => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     padding: 16,
-                    backgroundColor: colors.success[50],
+                    backgroundColor: 'rgba(58, 181, 209, 0.1)',
                     borderRadius: 12,
-                    borderWidth: 2,
-                    borderColor: colors.success[200],
+                    borderWidth: 1.5,
+                    borderColor: 'rgba(58, 181, 209, 0.3)',
                   }}
                 >
-                  <Icon name="package-variant" size={24} color={colors.success[500]} />
+                  <Icon name="package-variant" size={24} color={colors.primary[500]} />
                   <Text style={{
                     fontSize: 14,
                     fontWeight: '600',
-                    color: colors.success[500],
+                    color: colors.primary[500],
                     marginLeft: 8,
                   }}>
                     Orders
@@ -249,7 +249,7 @@ const AdminDashboardScreen = () => {
             </View>
 
             {recentOrders.length === 0 ? (
-              <Card elevation="flat" className="p-8 items-center">
+              <Card elevation="flat" glassmorphism className="p-8 items-center">
                 <Icon name={"package-variant-off" as any} size={48} color={colors.neutral[400]} />
                 <Text className="text-base text-neutral-500 mt-4 text-center">
                   No recent orders
@@ -261,6 +261,7 @@ const AdminDashboardScreen = () => {
                   <ContentFadeIn key={order.id} delay={300 + index * 50}>
                     <Card
                       elevation="card"
+                      glassmorphism
                       onPress={() => handleOrderPress(order.id)}
                       className="p-4"
                     >

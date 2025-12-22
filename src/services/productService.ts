@@ -143,8 +143,8 @@ export const productService = {
   /**
    * Get product price for a specific country
    */
-  getProductPrice(product: Product, country: 'germany' | 'norway'): number {
-    return country === 'germany' ? product.price_germany : product.price_norway;
+  getProductPrice(product: Product, country: 'germany' | 'denmark'): number {
+    return country === 'germany' ? product.price_germany : product.price_denmark;
   },
 
   /**

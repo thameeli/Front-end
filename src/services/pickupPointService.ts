@@ -10,7 +10,7 @@ export const pickupPointService = {
   /**
    * Get all pickup points
    */
-  async getPickupPoints(country?: 'germany' | 'norway'): Promise<PickupPoint[]> {
+  async getPickupPoints(country?: 'germany' | 'denmark'): Promise<PickupPoint[]> {
     try {
       const supabase = getSupabase();
       let query = supabase

@@ -110,13 +110,23 @@ const Modal: React.FC<ModalProps> = ({
         />
 
         <AnimatedView
-          style={modalStyle}
+          style={[
+            modalStyle,
+            {
+              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: 'rgba(58, 181, 209, 0.2)',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.15,
+              shadowRadius: 20,
+              elevation: 8,
+              padding: size === 'full' ? 0 : 24,
+            },
+          ]}
           className={`
             ${getSizeClasses()}
-            bg-white
-            rounded-2xl
-            ${size === 'full' ? '' : 'p-6'}
-            shadow-2xl
             ${className}
           `}
         >

@@ -23,7 +23,7 @@ const CartItem: React.FC<CartItemProps> = ({
 }) => {
   const price = country === COUNTRIES.GERMANY
     ? item.product.price_germany
-    : item.product.price_norway;
+    : item.product.price_denmark;
   const subtotal = price * item.quantity;
   const maxQuantity = item.product.stock;
 
@@ -87,7 +87,9 @@ const CartItem: React.FC<CartItemProps> = ({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(58, 181, 209, 0.15)',
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,

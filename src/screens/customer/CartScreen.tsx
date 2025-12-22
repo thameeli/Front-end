@@ -190,7 +190,7 @@ const CartScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: 'rgba(245, 245, 250, 0.95)' }]}>
       <AppHeader title="Shopping Cart" />
       
       <ScrollView
@@ -317,7 +317,7 @@ const CartScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.neutral[50],
+    backgroundColor: 'rgba(245, 245, 250, 0.95)',
   },
   scrollView: {
     flex: 1,
@@ -331,9 +331,10 @@ const styles = StyleSheet.create({
   warningCard: {
     marginBottom: 16,
     padding: 16,
-    backgroundColor: colors.warning[50],
+    backgroundColor: 'rgba(255, 243, 224, 0.85)',
     borderWidth: 1,
-    borderColor: colors.warning[200],
+    borderColor: 'rgba(255, 152, 0, 0.2)',
+    borderRadius: 12,
   },
   warningHeader: {
     flexDirection: 'row',
@@ -408,9 +409,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderTopWidth: 1,
-    borderTopColor: colors.neutral[200],
+    borderTopColor: 'rgba(58, 181, 209, 0.15)',
     paddingTop: 12,
     paddingBottom: 12,
     shadowColor: '#000',

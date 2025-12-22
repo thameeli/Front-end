@@ -204,8 +204,11 @@ const FilterBar: React.FC<FilterBarProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(58, 181, 209, 0.1)',
   },
   section: {
     marginBottom: 12,
@@ -231,8 +234,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: colors.neutral[200],
-    backgroundColor: '#fff',
+    borderColor: 'rgba(58, 181, 209, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     marginRight: 8,
     marginBottom: 8,
   },

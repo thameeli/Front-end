@@ -4,7 +4,7 @@ export const APP_NAME = 'Thamili';
 // Countries
 export const COUNTRIES = {
   GERMANY: 'germany',
-  NORWAY: 'norway',
+  DENMARK: 'denmark',
 } as const;
 
 export type Country = typeof COUNTRIES[keyof typeof COUNTRIES];

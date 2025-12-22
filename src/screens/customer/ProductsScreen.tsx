@@ -108,8 +108,8 @@ const ProductsScreen = () => {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-neutral-50">
-        <View className="px-4 pt-4 pb-2 bg-white">
+      <View style={{ flex: 1, backgroundColor: 'rgba(245, 245, 250, 0.95)' }}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, backgroundColor: 'rgba(255, 255, 255, 0.85)', borderBottomWidth: 1, borderBottomColor: 'rgba(58, 181, 209, 0.1)' }}>
           <SkeletonLoader width="100%" height={48} borderRadius={12} className="mb-4" />
           <SkeletonLoader width="60%" height={32} borderRadius={8} />
         </View>
@@ -122,7 +122,7 @@ const ProductsScreen = () => {
 
   if (error) {
     return (
-      <View className="flex-1 bg-neutral-50">
+      <View style={{ flex: 1, backgroundColor: 'rgba(245, 245, 250, 0.95)' }}>
         <ErrorMessage
           message="Failed to load products. Please try again."
           error={error}
@@ -134,7 +134,18 @@ const ProductsScreen = () => {
   }
 
   const renderHeader = () => (
-    <AnimatedView animation="fade" delay={0} className="px-4 pt-4 pb-2 bg-white">
+    <AnimatedView 
+      animation="fade" 
+      delay={0} 
+      style={{ 
+        paddingHorizontal: 16, 
+        paddingTop: 16, 
+        paddingBottom: 8, 
+        backgroundColor: 'rgba(255, 255, 255, 0.85)',
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(58, 181, 209, 0.1)',
+      }}
+    >
       <SearchBar
         value={searchQuery}
         onChangeText={handleSearchChange}
@@ -152,10 +163,15 @@ const ProductsScreen = () => {
         />
         
         {/* View Mode Toggle */}
-        <View className="flex-row bg-neutral-100 rounded-lg p-1">
+        <View style={{ flexDirection: 'row', backgroundColor: 'rgba(245, 245, 250, 0.6)', borderRadius: 12, padding: 4 }}>
           <TouchableOpacity
             onPress={() => setViewMode('list')}
-            className={`px-3 py-1 rounded ${viewMode === 'list' ? 'bg-white shadow-sm' : ''}`}
+            style={{
+              paddingHorizontal: 12,
+              paddingVertical: 4,
+              borderRadius: 8,
+              backgroundColor: viewMode === 'list' ? 'rgba(255, 255, 255, 0.9)' : 'transparent',
+            }}
           >
             <Icon
               name="format-list-bulleted"
@@ -165,7 +181,12 @@ const ProductsScreen = () => {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setViewMode('grid')}
-            className={`px-3 py-1 rounded ${viewMode === 'grid' ? 'bg-white shadow-sm' : ''}`}
+            style={{
+              paddingHorizontal: 12,
+              paddingVertical: 4,
+              borderRadius: 8,
+              backgroundColor: viewMode === 'grid' ? 'rgba(255, 255, 255, 0.9)' : 'transparent',
+            }}
           >
             <Icon
               name="view-grid"
@@ -192,7 +213,7 @@ const ProductsScreen = () => {
 
   if (filteredProducts.length === 0) {
     return (
-      <View className="flex-1 bg-neutral-50">
+      <View style={{ flex: 1, backgroundColor: 'rgba(245, 245, 250, 0.95)' }}>
         {renderHeader()}
         <EmptyState
           icon="magnify"
@@ -221,8 +242,9 @@ const ProductsScreen = () => {
   // Grid View
   if (viewMode === 'grid') {
     return (
-      <View className="flex-1 bg-neutral-50">
+      <View style={{ flex: 1, backgroundColor: 'rgba(245, 245, 250, 0.95)' }}>
         <FlatList
+          key={`grid-${numColumns}`}
           data={filteredProducts}
           keyExtractor={keyExtractor}
           numColumns={numColumns}
@@ -250,8 +272,9 @@ const ProductsScreen = () => {
 
   // List View - single column
   return (
-    <View className="flex-1 bg-neutral-50">
+    <View style={{ flex: 1, backgroundColor: 'rgba(245, 245, 250, 0.95)' }}>
       <FlatList
+        key="list-1"
         data={filteredProducts}
         keyExtractor={keyExtractor}
         numColumns={1}

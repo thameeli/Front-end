@@ -70,6 +70,7 @@ const screenOptions = {
 // Custom screen options for specific screens
 const modalScreenOptions = {
   ...screenOptions,
+  headerShown: false, // Explicitly disable header
   ...PAGE_TRANSITIONS.slideFromBottom,
   gestureEnabled: true,
   gestureDirection: 'vertical' as const,
@@ -77,6 +78,7 @@ const modalScreenOptions = {
 
 const detailScreenOptions = {
   ...screenOptions,
+  headerShown: false, // Explicitly disable header
   ...PAGE_TRANSITIONS.fade,
 };
 
@@ -86,20 +88,8 @@ const GuestTabs = () => {
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
-        headerShown: true,
-        headerStyle: {
-          backgroundColor: '#fff',
-          elevation: 2,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-        },
-        headerTintColor: '#000',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-          fontSize: 18,
-        },
+        // Use in-screen headers/hero sections instead of default tab headers
+        headerShown: false,
       }}
     >
       <Tab.Screen
@@ -151,20 +141,7 @@ const CustomerTabs = () => {
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
-        headerShown: true,
-        headerStyle: {
-          backgroundColor: '#fff',
-          elevation: 2,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-        },
-        headerTintColor: '#000',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-          fontSize: 18,
-        },
+        headerShown: false,
       }}
     >
       <Tab.Screen
@@ -242,20 +219,7 @@ const AdminTabs = () => {
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
-        headerShown: true,
-        headerStyle: {
-          backgroundColor: '#fff',
-          elevation: 2,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-        },
-        headerTintColor: '#000',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-          fontSize: 18,
-        },
+        headerShown: false,
       }}
     >
       <Tab.Screen
@@ -393,11 +357,25 @@ const AppNavigator = () => {
   }
 
   // Use a key to force re-render when auth state changes
+  // Normalize role to lowercase for comparison
+  const userRole = user?.role ? user.role.toLowerCase().trim() : 'customer';
+  const isAdmin = userRole === 'admin';
+  
   const navigatorKey = isAuthenticated
-    ? user?.role === 'admin'
+    ? isAdmin
       ? 'admin'
       : 'customer'
     : 'guest';
+  
+  // Debug logging
+  if (isAuthenticated && user) {
+    console.log('🔍 [AppNavigator] User role check:', {
+      userRole,
+      isAdmin,
+      navigatorKey,
+      rawRole: user.role,
+    });
+  }
 
   return (
     <NavigationContainer ref={navigationRef}>
@@ -409,7 +387,7 @@ const AppNavigator = () => {
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
           </>
-        ) : user?.role === 'admin' ? (
+        ) : isAdmin ? (
           <>
             <Stack.Screen name="Main" component={AdminTabs} />
             <Stack.Screen name="Settings" component={AdminSettingsScreen} />

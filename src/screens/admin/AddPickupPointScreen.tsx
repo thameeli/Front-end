@@ -9,6 +9,7 @@ import { AppHeader, Input, Button, ErrorMessage, CountrySelector } from '../../c
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
 import { isTablet, isSmallDevice, getResponsivePadding } from '../../utils/responsive';
+import { glassmorphism, colors } from '../../theme';
 
 type AddPickupPointScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AddPickupPoint'>;
 
@@ -74,7 +75,7 @@ const AddPickupPointScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={glassmorphism.screenBackground}>
       <AppHeader title="Add Pickup Point" showBack />
       <ScrollView 
         style={styles.content}
@@ -182,7 +183,6 @@ const AddPickupPointScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   content: {
     flex: 1,
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000',
+    color: colors.neutral[900],
     marginBottom: 12,
   },
   coordinatesSection: {

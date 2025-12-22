@@ -10,6 +10,7 @@ import { productService } from '../../services/productService';
 import { AppHeader, Input, Button, ErrorMessage, LoadingScreen } from '../../components';
 import { PRODUCT_CATEGORIES } from '../../constants';
 import { isTablet, isSmallDevice, getResponsivePadding } from '../../utils/responsive';
+import { glassmorphism, colors } from '../../theme';
 // Lazy import to avoid module-level initialization issues
 let ImagePicker: any = null;
 const getImagePicker = async () => {
@@ -33,7 +34,7 @@ const EditProductScreen = () => {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<ProductCategory>('fresh');
   const [priceGermany, setPriceGermany] = useState('');
-  const [priceNorway, setPriceNorway] = useState('');
+  const [priceDenmark, setPriceDenmark] = useState('');
   const [stock, setStock] = useState('');
   const [active, setActive] = useState(true);
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -54,7 +55,7 @@ const EditProductScreen = () => {
       setDescription(product.description || '');
       setCategory(product.category);
       setPriceGermany(product.price_germany.toString());
-      setPriceNorway(product.price_norway.toString());
+      setPriceDenmark(product.price_denmark.toString());
       setStock(product.stock.toString());
       setActive(product.active);
       setCurrentImageUrl(product.image_url || null);
@@ -127,8 +128,8 @@ const EditProductScreen = () => {
     if (!priceGermany || isNaN(parseFloat(priceGermany)) || parseFloat(priceGermany) <= 0) {
       newErrors.priceGermany = 'Valid Germany price is required';
     }
-    if (!priceNorway || isNaN(parseFloat(priceNorway)) || parseFloat(priceNorway) <= 0) {
-      newErrors.priceNorway = 'Valid Norway price is required';
+    if (!priceDenmark || isNaN(parseFloat(priceDenmark)) || parseFloat(priceDenmark) <= 0) {
+      newErrors.priceDenmark = 'Valid Denmark price is required';
     }
     if (!stock || isNaN(parseInt(stock)) || parseInt(stock) < 0) {
       newErrors.stock = 'Valid stock quantity is required';
@@ -146,7 +147,7 @@ const EditProductScreen = () => {
       description: description.trim() || undefined,
       category,
       price_germany: parseFloat(priceGermany),
-      price_norway: parseFloat(priceNorway),
+      price_denmark: parseFloat(priceDenmark),
       stock: parseInt(stock),
       active,
     });
@@ -158,7 +159,7 @@ const EditProductScreen = () => {
 
   if (!product) {
     return (
-      <View style={styles.container}>
+      <View style={glassmorphism.screenBackground}>
         <AppHeader title="Edit Product" showBack />
         <ErrorMessage message="Product not found" />
       </View>
@@ -166,7 +167,7 @@ const EditProductScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={glassmorphism.screenBackground}>
       <AppHeader title="Edit Product" showBack />
       <ScrollView 
         style={styles.content}
@@ -243,15 +244,15 @@ const EditProductScreen = () => {
           </View>
           <View style={styles.halfWidth}>
             <Input
-              label="Price (Norway) *"
+              label="Price (Denmark) *"
               placeholder="0.00"
-              value={priceNorway}
+              value={priceDenmark}
               onChangeText={(text) => {
-                setPriceNorway(text);
-                if (errors.priceNorway) setErrors({ ...errors, priceNorway: '' });
+                setPriceDenmark(text);
+                if (errors.priceDenmark) setErrors({ ...errors, priceDenmark: '' });
               }}
               keyboardType="decimal-pad"
-              error={errors.priceNorway}
+              error={errors.priceDenmark}
             />
           </View>
         </View>
@@ -328,7 +329,6 @@ const EditProductScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   content: {
     flex: 1,
@@ -352,23 +352,23 @@ const styles = StyleSheet.create({
   categoryButton: {
     flex: 1,
     padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(58, 181, 209, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
     alignItems: 'center',
   },
   categoryButtonActive: {
-    borderColor: '#007AFF',
-    backgroundColor: '#f0f7ff',
+    borderColor: colors.primary[500],
+    backgroundColor: 'rgba(58, 181, 209, 0.1)',
   },
   categoryButtonText: {
     fontSize: 14,
-    color: '#666',
+    color: colors.neutral[600],
     fontWeight: '500',
   },
   categoryButtonTextActive: {
-    color: '#007AFF',
+    color: colors.primary[500],
     fontWeight: '600',
   },
   priceRow: {
@@ -389,23 +389,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(58, 181, 209, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
     gap: 8,
+    ...glassmorphism.panel,
   },
   activeButtonActive: {
-    borderColor: '#34C759',
-    backgroundColor: '#e6f9ed',
+    borderColor: colors.success[500],
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
   },
   activeText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: colors.neutral[600],
   },
   activeTextActive: {
-    color: '#34C759',
+    color: colors.success[600],
   },
   imageSection: {
     marginBottom: 16,
@@ -416,17 +417,18 @@ const styles = StyleSheet.create({
   imagePlaceholder: {
     height: 150,
     borderWidth: 2,
-    borderColor: '#ddd',
+    borderColor: 'rgba(58, 181, 209, 0.3)',
     borderStyle: 'dashed',
-    borderRadius: 8,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f9f9f9',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    ...glassmorphism.panel,
   },
   imagePlaceholderText: {
     marginTop: 8,
     fontSize: 14,
-    color: '#007AFF',
+    color: colors.primary[500],
     fontWeight: '500',
   },
   imagePreview: {
@@ -444,9 +446,11 @@ const styles = StyleSheet.create({
     right: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     padding: 8,
-    borderRadius: 6,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: 'rgba(58, 181, 209, 0.3)',
     gap: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

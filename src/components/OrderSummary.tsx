@@ -32,7 +32,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         {items.map((item) => {
           const price = country === COUNTRIES.GERMANY
             ? item.product.price_germany
-            : item.product.price_norway;
+            : item.product.price_denmark;
           const itemSubtotal = price * item.quantity;
 
           return (
@@ -86,14 +86,16 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    borderRadius: 16,
     padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(58, 181, 209, 0.15)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 12,
+    elevation: 4,
   },
   title: {
     fontSize: 18,

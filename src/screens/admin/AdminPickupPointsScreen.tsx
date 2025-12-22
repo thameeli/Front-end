@@ -12,6 +12,7 @@ import { formatPrice } from '../../utils/productUtils';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
 import { isTablet, isSmallDevice, getResponsivePadding } from '../../utils/responsive';
+import { glassmorphism, colors } from '../../theme';
 
 type AdminPickupPointsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AdminPickupPoints'>;
 
@@ -102,7 +103,7 @@ const AdminPickupPointsScreen = () => {
           )}
         </View>
       </View>
-      <View style={styles.actions}>
+      <View style={[styles.actions, isSmallDevice() && { flexDirection: 'column' }]}>
         <TouchableOpacity
           style={[styles.actionButton, !item.active && styles.activeButton]}
           onPress={() => handleToggleActive(item)}
@@ -152,7 +153,7 @@ const AdminPickupPointsScreen = () => {
 
   if (error) {
     return (
-      <View style={styles.container}>
+      <View style={glassmorphism.screenBackground}>
         <AppHeader title="Manage Pickup Points" />
         <ErrorMessage
           message="Failed to load pickup points. Please try again."
@@ -165,7 +166,7 @@ const AdminPickupPointsScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={glassmorphism.screenBackground}>
       <AppHeader
         title="Manage Pickup Points"
         rightAction={
@@ -207,7 +208,7 @@ const AdminPickupPointsScreen = () => {
         />
       )}
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { padding: padding.vertical }]}>
         <Button
           title="Add New Pickup Point"
           onPress={handleAddPickupPoint}
@@ -222,21 +223,22 @@ const AdminPickupPointsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   listContent: {
     // padding will be set dynamically
   },
   pickupPointCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(58, 181, 209, 0.2)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 12,
+    elevation: 4,
   },
   pickupPointHeader: {
     marginBottom: 12,
@@ -277,7 +279,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   actions: {
-    flexDirection: isSmallDevice ? 'column' : 'row',
+    flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 8,
     paddingTop: 12,
@@ -289,23 +291,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: 'rgba(58, 181, 209, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
     gap: 4,
   },
   activeButton: {
-    borderColor: '#34C759',
-    backgroundColor: '#e6f9ed',
+    borderColor: colors.success[500],
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
   },
   editButton: {
-    borderColor: '#007AFF',
-    backgroundColor: '#f0f7ff',
+    borderColor: colors.primary[500],
+    backgroundColor: 'rgba(58, 181, 209, 0.1)',
   },
   deleteButton: {
-    borderColor: '#FF3B30',
-    backgroundColor: '#ffe6e6',
+    borderColor: colors.error[500],
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
   },
   actionText: {
     fontSize: 12,
@@ -322,10 +324,9 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
   },
   footer: {
-    padding: padding.vertical,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderTopWidth: 1.5,
+    borderTopColor: 'rgba(58, 181, 209, 0.2)',
   },
   addButton: {
     marginTop: 0,

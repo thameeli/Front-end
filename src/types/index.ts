@@ -7,7 +7,7 @@ export interface User {
   phone?: string;
   name?: string;
   role: UserRole;
-  country_preference?: 'germany' | 'norway';
+  country_preference?: 'germany' | 'denmark';
   created_at: string;
 }
 
@@ -20,9 +20,9 @@ export interface Product {
   description?: string;
   category: ProductCategory;
   price_germany: number;
-  price_norway: number;
+  price_denmark: number;
   original_price_germany?: number; // Original price before discount
-  original_price_norway?: number; // Original price before discount
+  original_price_denmark?: number; // Original price before discount
   discount_percentage?: number; // Discount percentage (0-100)
   stock: number;
   image_url?: string;
@@ -43,7 +43,7 @@ export interface Order {
   order_date: string;
   status: OrderStatus;
   total_amount: number;
-  country: 'germany' | 'norway';
+  country: 'germany' | 'denmark';
   payment_method: PaymentMethod;
   payment_status: PaymentStatus;
   pickup_point_id?: string;
@@ -68,7 +68,7 @@ export interface PickupPoint {
   address: string;
   latitude?: number;
   longitude?: number;
-  country: 'germany' | 'norway';
+  country: 'germany' | 'denmark';
   delivery_fee: number;
   active: boolean;
   created_at: string;
@@ -78,7 +78,7 @@ export interface PickupPoint {
 export interface CartItem {
   product: Product;
   quantity: number;
-  selectedCountry: 'germany' | 'norway';
+  selectedCountry: 'germany' | 'denmark';
 }
 
 // Navigation Types

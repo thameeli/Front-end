@@ -13,6 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { getShadow } from '../theme/shadows';
 import { EASING } from '../utils/animations';
+import { glassmorphism } from '../theme/glassmorphism';
 
 import { View } from 'react-native';
 
@@ -44,6 +45,7 @@ interface CardProps {
   elevation?: 'flat' | 'card' | 'raised' | 'floating' | 'modal';
   padding?: number;
   className?: string; // Deprecated - use style prop instead
+  glassmorphism?: boolean; // Enable glassmorphism effect (default: true)
 }
 
 const Card: React.FC<CardProps> = ({
@@ -53,6 +55,7 @@ const Card: React.FC<CardProps> = ({
   elevation = 'card',
   padding = 16,
   className = '',
+  glassmorphism: useGlassmorphism = true, // Default to glassmorphism
 }) => {
   const scale = useSharedValue(1);
   const shadowOpacity = useSharedValue(0.1);
@@ -81,15 +84,18 @@ const Card: React.FC<CardProps> = ({
   }));
 
   const baseShadowStyle = getShadow(elevation === 'flat' ? 'none' : elevation === 'card' ? 'sm' : elevation === 'raised' ? 'md' : elevation === 'floating' ? 'lg' : 'xl');
+  const glassStyle = useGlassmorphism ? glassmorphism.light.container : {};
 
   const cardContent = (
     <AnimatedView
       style={[
         {
           padding,
-          backgroundColor: '#fff',
-          borderRadius: 12,
+          backgroundColor: useGlassmorphism ? 'rgba(255, 255, 255, 0.85)' : '#fff',
+          borderRadius: 16,
+          overflow: 'hidden',
           ...baseShadowStyle,
+          ...glassStyle,
         },
         onPress ? animatedStyle : {},
         style,

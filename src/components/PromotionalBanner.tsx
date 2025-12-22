@@ -36,7 +36,8 @@ const PromotionalBanner: React.FC<PromotionalBannerProps> = ({
         return [colors.warning[500] as string, colors.warning[600] as string];
       case 'primary':
       default:
-        return [colors.primary[500] as string, colors.primary[600] as string];
+        // Use Navy to Cyan gradient for premium look
+        return [colors.navy[500] as string, colors.primary[500] as string];
     }
   };
 

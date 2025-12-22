@@ -30,7 +30,7 @@ import { getFilteredOrders } from '../../utils/orderUtils';
 import { debounce } from '../../utils/debounce';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
-import { colors } from '../../theme';
+import { colors, glassmorphism } from '../../theme';
 import {
   isSmallDevice,
   isTablet,
@@ -59,7 +59,7 @@ const AdminOrdersScreen = () => {
   }, []);
 
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus | 'all'>('all');
-  const [selectedCountry, setSelectedCountry] = useState<'all' | 'germany' | 'norway'>('all');
+  const [selectedCountry, setSelectedCountry] = useState<'all' | 'germany' | 'denmark'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
 
@@ -132,7 +132,7 @@ const AdminOrdersScreen = () => {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-neutral-50">
+      <View style={glassmorphism.screenBackground}>
         <AppHeader title="Manage Orders" />
         <View className="px-4 pt-4">
           <SkeletonCard type="order" count={3} />
@@ -143,7 +143,7 @@ const AdminOrdersScreen = () => {
 
   if (error) {
     return (
-      <View className="flex-1 bg-neutral-50">
+      <View style={glassmorphism.screenBackground}>
         <AppHeader title="Manage Orders" />
         <ErrorMessage
           message="Failed to load orders. Please try again."
@@ -159,12 +159,14 @@ const AdminOrdersScreen = () => {
     <AnimatedView 
       animation="fade" 
       delay={0} 
-      style={{
-        paddingHorizontal: padding.horizontal,
-        paddingTop: padding.vertical,
-        paddingBottom: 8,
-        backgroundColor: '#fff',
-      }}
+      style={[
+        glassmorphism.panel.container,
+        {
+          paddingHorizontal: padding.horizontal,
+          paddingTop: padding.vertical,
+          paddingBottom: 8,
+        }
+      ]}
     >
       <Text className="text-2xl font-bold text-neutral-900 mb-4">Manage Orders</Text>
 
@@ -188,19 +190,28 @@ const AdminOrdersScreen = () => {
       <View className="mt-4 mb-2">
         <Text className="text-sm font-semibold text-neutral-700 mb-3">Country Filter</Text>
         <View className="flex-row gap-2">
-          {(['all', 'germany', 'norway'] as const).map((countryOption) => (
+          {(['all', 'germany', 'denmark'] as const).map((countryOption) => (
             <TouchableOpacity
               key={countryOption}
               onPress={() => setSelectedCountry(countryOption)}
-              className={`
-                flex-1 flex-row items-center justify-center p-3 rounded-lg border-2
-                ${selectedCountry === countryOption
-                  ? 'border-primary-500 bg-primary-50'
-                  : 'border-neutral-200 bg-white'}
-              `}
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 12,
+                borderRadius: 12,
+                borderWidth: 1.5,
+                borderColor: selectedCountry === countryOption 
+                  ? colors.primary[500] 
+                  : 'rgba(58, 181, 209, 0.2)',
+                backgroundColor: selectedCountry === countryOption 
+                  ? 'rgba(58, 181, 209, 0.1)' 
+                  : 'rgba(255, 255, 255, 0.7)',
+              }}
             >
               <Icon
-                name={countryOption === 'germany' ? 'flag' : countryOption === 'norway' ? 'flag' : 'earth'}
+                name={countryOption === 'germany' ? 'flag' : countryOption === 'denmark' ? 'flag' : 'earth'}
                 size={16}
                 color={selectedCountry === countryOption ? colors.primary[500] : colors.neutral[500]}
                 style={{ marginRight: 4 }}
@@ -239,7 +250,7 @@ const AdminOrdersScreen = () => {
 
   if (filteredOrders.length === 0) {
     return (
-      <View className="flex-1 bg-neutral-50">
+      <View style={glassmorphism.screenBackground}>
         {renderHeader()}
         <EmptyState
           icon={searchQuery ? "magnify" : "package-variant"}
@@ -255,7 +266,7 @@ const AdminOrdersScreen = () => {
   }
 
   return (
-    <View className="flex-1 bg-neutral-50">
+    <View style={glassmorphism.screenBackground}>
       <AppHeader title="Manage Orders" />
 
       <FlatList

@@ -47,6 +47,7 @@ const LoginScreen = () => {
   }, []);
 
   // Navigate when authentication state changes
+  // Note: Don't clear errors here - only clear on successful login attempt
   useEffect(() => {
     if (isAuthenticated && user) {
       console.log('✅ Login successful, user authenticated:', {
@@ -54,10 +55,13 @@ const LoginScreen = () => {
         email: user.email,
         name: user.name,
       });
+      // Clear error only on successful authentication
+      setApiError('');
     }
   }, [isAuthenticated, user]);
 
   const handleLogin = async () => {
+    // Clear previous errors
     setErrors({});
     setApiError('');
 
@@ -68,9 +72,18 @@ const LoginScreen = () => {
       return;
     }
 
+    // Attempt login
     const result = await login(email, password);
+    
+    // Always check result and display error if login failed
     if (!result.success) {
-      setApiError(result.error || t('errors.somethingWentWrong'));
+      const errorMessage = result.error || t('errors.somethingWentWrong') || 'Invalid email or password. Please try again.';
+      setApiError(errorMessage);
+      console.log('❌ [LoginScreen] Login failed:', errorMessage);
+    } else {
+      // Clear any previous errors on success
+      setApiError('');
+      console.log('✅ [LoginScreen] Login successful');
     }
   };
 
@@ -82,7 +95,7 @@ const LoginScreen = () => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-white"
+      style={{ flex: 1, backgroundColor: 'rgba(245, 245, 250, 0.95)' }}
     >
       <ScrollView
         className="flex-1"
@@ -136,7 +149,9 @@ const LoginScreen = () => {
               {apiError && (
                 <ErrorMessage
                   message={apiError}
+                  type="error"
                   onDismiss={() => setApiError('')}
+                  style={{ marginBottom: 16 }}
                 />
               )}
 
@@ -146,7 +161,11 @@ const LoginScreen = () => {
                 value={email}
                 onChangeText={(text) => {
                   setEmail(text);
-                  if (errors.email) setErrors({ ...errors, email: '' });
+                  // Clear field-specific error when user types
+                  if (errors.email) {
+                    setErrors({ ...errors, email: '' });
+                  }
+                  // Keep API error visible until user tries to login again
                 }}
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -163,7 +182,11 @@ const LoginScreen = () => {
                 value={password}
                 onChangeText={(text) => {
                   setPassword(text);
-                  if (errors.password) setErrors({ ...errors, password: '' });
+                  // Clear field-specific error when user types
+                  if (errors.password) {
+                    setErrors({ ...errors, password: '' });
+                  }
+                  // Keep API error visible until user tries to login again
                 }}
                 secureTextEntry
                 autoComplete="password"

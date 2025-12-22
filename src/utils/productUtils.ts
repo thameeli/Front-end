@@ -15,7 +15,7 @@ export const formatPrice = (price: number, country: Country): string => {
  * Inlined to avoid importing productService which causes "property is not configurable" errors
  */
 export const getProductPrice = (product: Product, country: Country): number => {
-  return country === COUNTRIES.GERMANY ? product.price_germany : product.price_norway;
+  return country === COUNTRIES.GERMANY ? product.price_germany : product.price_denmark;
 };
 
 /**
