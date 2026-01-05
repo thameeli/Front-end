@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import Animated, {
   useAnimatedStyle,
@@ -15,6 +15,7 @@ import Animated, {
   withSequence,
 } from 'react-native-reanimated';
 import { colors } from '../theme';
+import { ASSETS } from '../constants/assets';
 import { ANIMATION_DURATION, EASING } from '../utils/animations';
 import Button from './Button';
 
@@ -39,6 +40,8 @@ interface EmptyStateProps {
   secondaryActionLabel?: string;
   onSecondaryAction?: () => void;
   illustration?: React.ReactNode;
+  showLogo?: boolean;
+  suggestions?: string[]; // Contextual suggestions based on empty state type
 }
 
 const EmptyState: React.FC<EmptyStateProps> = ({
@@ -51,6 +54,8 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   secondaryActionLabel,
   onSecondaryAction,
   illustration,
+  showLogo = false,
+  suggestions = [],
 }) => {
   const containerOpacity = useSharedValue(0);
   const iconScale = useSharedValue(0.8);
@@ -104,6 +109,14 @@ const EmptyState: React.FC<EmptyStateProps> = ({
           <View className="mb-6">
             {illustration}
           </View>
+        ) : showLogo ? (
+          <View className="w-24 h-24 rounded-full bg-neutral-100 justify-center items-center mb-6">
+            <Image 
+              source={ASSETS.logo} 
+              style={{ width: 80, height: 80 }}
+              resizeMode="contain"
+            />
+          </View>
         ) : (
           <View className="w-24 h-24 rounded-full bg-neutral-100 justify-center items-center mb-6">
             <Icon
@@ -120,9 +133,24 @@ const EmptyState: React.FC<EmptyStateProps> = ({
           {title}
         </Text>
         {message && (
-          <Text className="text-base text-neutral-500 text-center mb-6">
+          <Text className="text-base text-neutral-500 text-center mb-4">
             {message}
           </Text>
+        )}
+        {suggestions.length > 0 && (
+          <View className="mt-4 mb-6 px-4">
+            <Text className="text-sm font-semibold text-neutral-700 text-center mb-2">
+              Suggestions:
+            </Text>
+            {suggestions.map((suggestion, index) => (
+              <View key={index} className="flex-row items-start mb-2">
+                <Icon name="lightbulb-outline" size={16} color={colors.primary[500]} style={{ marginTop: 2, marginRight: 8 }} />
+                <Text className="text-sm text-neutral-600 flex-1">
+                  {suggestion}
+                </Text>
+              </View>
+            ))}
+          </View>
         )}
       </AnimatedView>
 

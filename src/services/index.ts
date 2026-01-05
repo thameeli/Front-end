@@ -5,6 +5,7 @@ export * from './pickupPointService';
 export * from './userService';
 export * from './notificationService';
 export * from './stripeService';
+export * from './deliveryService';
 // Note: pushNotificationService is not exported here to avoid auto-loading expo-notifications
 // Import it directly: import { pushNotificationService } from '../services/pushNotificationService';
 

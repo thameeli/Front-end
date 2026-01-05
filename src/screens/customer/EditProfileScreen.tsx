@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
 import { RootStackParamList } from '../../types';
 import { useAuthStore } from '../../store/authStore';
 import { userService } from '../../services';
-import { Button, Input, ErrorMessage, AppHeader, CountrySelector } from '../../components';
+import { Button, Input, ErrorMessage, AppHeader, CountrySelector, useToast } from '../../components';
 import { profileUpdateSchema, validateForm } from '../../utils/validation';
+import { validateName, validatePhone } from '../../utils/fieldValidation';
 import { formatPhoneNumber } from '../../utils/regionalFormatting';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
@@ -19,6 +20,7 @@ const EditProfileScreen = () => {
   const navigation = useNavigation<EditProfileScreenNavigationProp>();
   const { t } = useTranslation();
   const { user, setUser } = useAuthStore();
+  const { showToast } = useToast();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [country, setCountry] = useState<Country>(COUNTRIES.GERMANY);
@@ -57,7 +59,11 @@ const EditProfileScreen = () => {
       });
 
       setUser(updatedUser);
-      Alert.alert(t('common.success'), 'Profile updated successfully');
+      showToast({
+        message: 'Profile updated successfully',
+        type: 'success',
+        duration: 2000,
+      });
       navigation.goBack();
     } catch (error: any) {
       setApiError(error.message || t('errors.somethingWentWrong'));
@@ -94,6 +100,9 @@ const EditProfileScreen = () => {
           }}
           autoCapitalize="words"
           error={errors.name}
+          validateOnChange={true}
+          showSuccess={true}
+          onValidate={validateName}
         />
 
         <Input
@@ -110,6 +119,10 @@ const EditProfileScreen = () => {
           keyboardType="phone-pad"
           autoComplete="tel"
           error={errors.phone}
+          validateOnChange={true}
+          showSuccess={true}
+          onValidate={validatePhone}
+          helperText="Optional"
           accessibilityLabel={`Phone number input for ${country === COUNTRIES.GERMANY ? 'Germany' : 'Denmark'}`}
           accessibilityHint={`Enter phone number in ${country === COUNTRIES.GERMANY ? 'German' : 'Danish'} format`}
         />

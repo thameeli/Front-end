@@ -3,17 +3,20 @@
  * Introduces the app with smooth animations
  */
 
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Dimensions, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { RootStackParamList } from '../../types';
 import { colors } from '../../theme';
+import { ASSETS } from '../../constants/assets';
 import { EASING, ANIMATION_DURATION } from '../../utils/animations';
 import Button from '../../components/Button';
+import OnboardingTutorial from '../../components/OnboardingTutorial';
 import { isTablet, getResponsivePadding, getResponsiveFontSize } from '../../utils/responsive';
+import { isTutorialCompleted, setTutorialCompleted } from '../../utils/onboardingStorage';
 
 // Safe import of reanimated with fallback
 let Animated: any;
@@ -50,6 +53,21 @@ type WelcomeScreenNavigationProp = StackNavigationProp<
 const WelcomeScreen = () => {
   const navigation = useNavigation<WelcomeScreenNavigationProp>();
   const padding = getResponsivePadding();
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  // Check if tutorial should be shown
+  useEffect(() => {
+    const checkTutorialStatus = async () => {
+      const completed = await isTutorialCompleted();
+      if (!completed) {
+        // Show tutorial after a short delay
+        setTimeout(() => {
+          setShowTutorial(true);
+        }, 1000);
+      }
+    };
+    checkTutorialStatus();
+  }, []);
 
   // Initialize shared values only if reanimated is available
   const logoScale = useSharedValue ? useSharedValue(0) : { value: 1 };
@@ -122,6 +140,43 @@ const WelcomeScreen = () => {
     { icon: 'shield-check', text: 'Secure Payments' },
   ];
 
+  const tutorialSteps = [
+    {
+      id: '1',
+      title: 'Welcome to Thamili!',
+      description: 'Your one-stop shop for fresh and quality products, delivered right to your door.',
+      icon: 'hand-wave',
+    },
+    {
+      id: '2',
+      title: 'Explore Products',
+      description: 'Browse a wide selection of fresh fish, vegetables, and more. Find exactly what you need with smart search and filters.',
+      icon: 'shopping',
+    },
+    {
+      id: '3',
+      title: 'Easy Checkout',
+      description: 'Add items to your cart, choose home delivery or pickup, and pay securely with multiple options.',
+      icon: 'credit-card',
+    },
+    {
+      id: '4',
+      title: 'Track Your Order',
+      description: 'Stay updated with real-time order tracking and estimated delivery times.',
+      icon: 'truck-fast',
+    },
+  ];
+
+  const handleTutorialComplete = async () => {
+    await setTutorialCompleted();
+    setShowTutorial(false);
+  };
+
+  const handleTutorialSkip = async () => {
+    await setTutorialCompleted();
+    setShowTutorial(false);
+  };
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -132,7 +187,11 @@ const WelcomeScreen = () => {
       >
         <AnimatedView style={[styles.logoContainer, logoStyle]}>
           <View style={styles.logoCircle}>
-            <Icon name="store" size={64} color="white" />
+            <Image 
+              source={ASSETS.logo} 
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </View>
         </AnimatedView>
 
@@ -178,6 +237,16 @@ const WelcomeScreen = () => {
           />
         </AnimatedView>
       </LinearGradient>
+      
+      {/* Onboarding Tutorial */}
+      {showTutorial && (
+        <OnboardingTutorial
+          steps={tutorialSteps}
+          onComplete={handleTutorialComplete}
+          onSkip={handleTutorialSkip}
+          visible={showTutorial}
+        />
+      )}
     </View>
   );
 };
@@ -203,6 +272,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 3,
     borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  logoImage: {
+    width: 80,
+    height: 80,
   },
   titleContainer: {
     alignItems: 'center',

@@ -76,7 +76,7 @@ const OrderConfirmationScreen = () => {
 
   return (
     <View style={styles.container}>
-      <AppHeader title="Order Confirmation" showBack={false} />
+      <AppHeader title="Order Confirmation" showBack />
       
       <SuccessCelebration
         visible={showCelebration}

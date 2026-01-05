@@ -5,7 +5,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
-import { AppHeader } from '../../components';
+import { AppHeader, ThemeToggle, PerformanceIndicator } from '../../components';
 import { RootStackParamList } from '../../types';
 import { isSmallDevice, isTablet, getResponsivePadding, getResponsiveFontSize } from '../../utils/responsive';
 
@@ -119,6 +119,20 @@ const SettingsScreen = () => {
         </View>
 
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('settings.theme') || 'Theme'}</Text>
+          <ThemeToggle />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Performance</Text>
+          <PerformanceIndicator 
+            showNetworkSpeed={true}
+            showCacheStatus={true}
+            style={styles.performanceIndicator}
+          />
+        </View>
+
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('settings.about')}</Text>
           <Text style={styles.versionText}>
             {t('settings.version')}: 1.0.0
@@ -205,6 +219,9 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#000',
+  },
+  performanceIndicator: {
+    marginTop: 8,
   },
 });
 

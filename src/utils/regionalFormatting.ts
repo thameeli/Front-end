@@ -13,9 +13,15 @@ import type { Country } from '../constants';
  * Denmark: DKK (kr)
  */
 export const formatCurrency = (
-  amount: number,
+  amount: number | null | undefined,
   country: Country
 ): string => {
+  // Validate amount - if invalid, return placeholder
+  if (amount === null || amount === undefined || isNaN(amount) || amount < 0) {
+    const symbol = country === COUNTRIES.GERMANY ? '€' : 'kr';
+    return `${symbol} 0,00`;
+  }
+
   if (country === COUNTRIES.GERMANY) {
     // German format: € 12,34 (comma as decimal separator)
     return new Intl.NumberFormat('de-DE', {

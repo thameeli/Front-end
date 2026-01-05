@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../store/authStore';
 import { colors } from '../theme';
+import { ASSETS } from '../constants/assets';
 
 interface AppHeaderProps {
   title: string;
@@ -53,6 +54,13 @@ const AppHeader: React.FC<AppHeaderProps> = ({
                 <TouchableOpacity onPress={handleMenu} style={styles.iconButton}>
                   <Icon name="menu" size={24} color="#FFFFFF" />
                 </TouchableOpacity>
+              )}
+              {!showBack && !showMenu && (
+                <Image 
+                  source={ASSETS.logo} 
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
               )}
               <Text style={styles.title}>{title}</Text>
             </View>
@@ -110,6 +118,11 @@ const styles = StyleSheet.create({
   rightSection: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  logo: {
+    width: 32,
+    height: 32,
+    marginRight: 8,
   },
   title: {
     fontSize: 20,

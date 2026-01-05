@@ -1,24 +1,28 @@
 import { CartItem } from '../types';
 import { Product } from '../types';
+import { COUNTRIES } from '../constants';
+import type { Country } from '../constants';
+import { getProductStock } from './productUtils';
 
 /**
- * Validate if product is in stock
+ * Validate if product is in stock for a specific country
  */
-export const validateStock = (product: Product, quantity: number): {
+export const validateStock = (product: Product, quantity: number, country: Country): {
   isValid: boolean;
   error?: string;
 } => {
-  if (product.stock === 0) {
+  const stock = getProductStock(product, country);
+  if (stock === 0) {
     return {
       isValid: false,
       error: `${product.name} is out of stock`,
     };
   }
 
-  if (quantity > product.stock) {
+  if (quantity > stock) {
     return {
       isValid: false,
-      error: `Only ${product.stock} available for ${product.name}`,
+      error: `Only ${stock} available for ${product.name}`,
     };
   }
 
@@ -68,8 +72,9 @@ export const validateCart = (items: CartItem[]): {
   }
 
   items.forEach((item) => {
+    const stock = getProductStock(item.product, item.selectedCountry);
     // Check stock
-    const stockValidation = validateStock(item.product, item.quantity);
+    const stockValidation = validateStock(item.product, item.quantity, item.selectedCountry);
     if (!stockValidation.isValid && stockValidation.error) {
       errors.push(stockValidation.error);
     }
@@ -78,7 +83,7 @@ export const validateCart = (items: CartItem[]): {
     const quantityValidation = validateQuantity(
       item.quantity,
       1,
-      item.product.stock
+      stock
     );
     if (!quantityValidation.isValid && quantityValidation.error) {
       errors.push(quantityValidation.error);
@@ -107,12 +112,13 @@ export const removeOutOfStockItems = (items: CartItem[]): {
   const removedItems: CartItem[] = [];
 
   items.forEach((item) => {
-    if (item.product.stock > 0 && item.product.active) {
+    const stock = getProductStock(item.product, item.selectedCountry);
+    if (stock > 0 && item.product.active) {
       // Adjust quantity if it exceeds stock
-      if (item.quantity > item.product.stock) {
+      if (item.quantity > stock) {
         validItems.push({
           ...item,
-          quantity: item.product.stock,
+          quantity: stock,
         });
       } else {
         validItems.push(item);
@@ -147,9 +153,10 @@ export const updateCartWithProductData = (
       }
 
       // Update product data and adjust quantity if needed
+      const stock = getProductStock(updatedProduct, cartItem.selectedCountry);
       const quantity = Math.min(
         cartItem.quantity,
-        updatedProduct.stock
+        stock
       );
 
       return {

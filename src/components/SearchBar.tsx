@@ -4,10 +4,11 @@
  * Safe for Expo Go - uses StyleSheet instead of className
  */
 
-import React, { useState } from 'react';
-import { TextInput, TouchableOpacity, View, Text, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { TextInput, TouchableOpacity, View, Text, StyleSheet, FlatList, Modal } from 'react-native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { colors } from '../theme';
+import { getSearchHistory, getSearchSuggestions, addToSearchHistory, removeFromSearchHistory, clearSearchHistory } from '../utils/searchHistory';
 
 interface SearchBarProps {
   value: string;
@@ -19,6 +20,9 @@ interface SearchBarProps {
   onBlur?: () => void;
   onCameraPress?: () => void;
   onSearchPress?: () => void;
+  showSuggestions?: boolean; // Show search suggestions
+  onSuggestionPress?: (query: string) => void; // Called when suggestion is selected
+  category?: string; // Category for search history
 }
 
 const SearchBar: React.FC<SearchBarProps> = ({
@@ -31,24 +35,92 @@ const SearchBar: React.FC<SearchBarProps> = ({
   onBlur,
   onCameraPress,
   onSearchPress,
+  showSuggestions = true,
+  onSuggestionPress,
+  category,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
   const hasValue = value.length > 0;
 
   const handleFocus = () => {
     setIsFocused(true);
+    setShowSuggestionsModal(true);
     onFocus?.();
   };
 
   const handleBlur = () => {
-    setIsFocused(false);
-    onBlur?.();
+    // Delay to allow suggestion press
+    setTimeout(() => {
+      setIsFocused(false);
+      setShowSuggestionsModal(false);
+      onBlur?.();
+    }, 200);
+  };
+
+  // Load recent searches
+  useEffect(() => {
+    if (showSuggestions && isFocused) {
+      loadRecentSearches();
+    }
+  }, [isFocused, showSuggestions]);
+
+  // Load suggestions as user types
+  useEffect(() => {
+    if (showSuggestions && value.length > 0 && isFocused) {
+      loadSuggestions(value);
+    } else {
+      setSuggestions([]);
+    }
+  }, [value, isFocused, showSuggestions]);
+
+  const loadRecentSearches = async () => {
+    try {
+      const history = await getSearchHistory();
+      setRecentSearches(history.slice(0, 5).map(item => item.query));
+    } catch (error) {
+      console.error('Error loading recent searches:', error);
+    }
+  };
+
+  const loadSuggestions = async (query: string) => {
+    try {
+      const suggs = await getSearchSuggestions(query, 5);
+      setSuggestions(suggs);
+    } catch (error) {
+      console.error('Error loading suggestions:', error);
+    }
   };
 
   const handleClear = () => {
     onChangeText('');
+    setSuggestions([]);
     onClear?.();
   };
+
+  const handleSuggestionSelect = async (query: string) => {
+    onChangeText(query);
+    setShowSuggestionsModal(false);
+    await addToSearchHistory(query, category);
+    onSuggestionPress?.(query);
+  };
+
+  const handleSearch = async () => {
+    if (value.trim()) {
+      await addToSearchHistory(value.trim(), category);
+      setShowSuggestionsModal(false);
+      onSearchPress?.();
+    }
+  };
+
+  const handleRemoveSuggestion = async (query: string) => {
+    await removeFromSearchHistory(query);
+    loadRecentSearches();
+  };
+
+  const displaySuggestions = isFocused && (suggestions.length > 0 || recentSearches.length > 0);
 
   return (
     <View style={[styles.container, style]}>
@@ -65,11 +137,20 @@ const SearchBar: React.FC<SearchBarProps> = ({
           placeholder={placeholder}
           placeholderTextColor={colors.neutral[400]}
           value={value}
-          onChangeText={onChangeText}
+          onChangeText={(text) => {
+            onChangeText(text);
+            if (text.length > 0) {
+              setShowSuggestionsModal(true);
+            }
+          }}
           onFocus={handleFocus}
           onBlur={handleBlur}
+          onSubmitEditing={handleSearch}
           autoCapitalize="none"
           autoCorrect={false}
+          accessibilityLabel="Search input"
+          accessibilityHint="Enter search query"
+          accessibilityRole="searchbox"
         />
 
         {hasValue && (
@@ -91,14 +172,90 @@ const SearchBar: React.FC<SearchBarProps> = ({
 
       {onSearchPress && (
         <TouchableOpacity
-          onPress={onSearchPress}
+          onPress={handleSearch}
           style={[styles.searchButton, styles.buttonSpacing]}
           activeOpacity={0.8}
+          accessibilityLabel="Search button"
+          accessibilityRole="button"
         >
           <Text style={styles.searchButtonText} allowFontScaling={false}>
             Search
           </Text>
         </TouchableOpacity>
+      )}
+
+      {/* Search Suggestions Modal */}
+      {showSuggestions && displaySuggestions && (
+        <Modal
+          visible={showSuggestionsModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowSuggestionsModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.suggestionsOverlay}
+            activeOpacity={1}
+            onPress={() => setShowSuggestionsModal(false)}
+          >
+            <View style={styles.suggestionsContainer}>
+              {suggestions.length > 0 && (
+                <View>
+                  <Text style={styles.suggestionsTitle}>Suggestions</Text>
+                  {suggestions.map((suggestion, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.suggestionItem}
+                      onPress={() => handleSuggestionSelect(suggestion)}
+                      accessibilityLabel={`Search suggestion: ${suggestion}`}
+                      accessibilityRole="button"
+                    >
+                      <Icon name="magnify" size={16} color={colors.neutral[500]} />
+                      <Text style={styles.suggestionText}>{suggestion}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              {recentSearches.length > 0 && value.length === 0 && (
+                <View style={styles.recentSearches}>
+                  <View style={styles.recentSearchesHeader}>
+                    <Text style={styles.suggestionsTitle}>Recent Searches</Text>
+                    <TouchableOpacity
+                      onPress={async () => {
+                        await clearSearchHistory();
+                        setRecentSearches([]);
+                      }}
+                      accessibilityLabel="Clear search history"
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.clearHistoryText}>Clear</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {recentSearches.map((search, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.suggestionItem}
+                      onPress={() => handleSuggestionSelect(search)}
+                      accessibilityLabel={`Recent search: ${search}`}
+                      accessibilityRole="button"
+                    >
+                      <Icon name="clock-outline" size={16} color={colors.neutral[500]} />
+                      <Text style={styles.suggestionText}>{search}</Text>
+                      <TouchableOpacity
+                        onPress={() => handleRemoveSuggestion(search)}
+                        style={styles.removeButton}
+                        accessibilityLabel={`Remove ${search} from history`}
+                        accessibilityRole="button"
+                      >
+                        <Icon name="close" size={14} color={colors.neutral[400]} />
+                      </TouchableOpacity>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+        </Modal>
       )}
     </View>
   );
@@ -168,6 +325,69 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   buttonSpacing: {
+    marginLeft: 8,
+  },
+  suggestionsOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'flex-start',
+    paddingTop: 100,
+  },
+  suggestionsContainer: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    marginHorizontal: 16,
+    paddingVertical: 8,
+    maxHeight: 300,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  suggestionsTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.neutral[600],
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.neutral[100],
+  },
+  suggestionText: {
+    flex: 1,
+    fontSize: 15,
+    color: colors.neutral[900],
+    marginLeft: 12,
+  },
+  recentSearches: {
+    marginTop: 8,
+  },
+  recentSearchesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  clearHistoryText: {
+    fontSize: 12,
+    color: colors.primary[500],
+    fontWeight: '600',
+  },
+  removeButton: {
+    padding: 4,
     marginLeft: 8,
   },
 });

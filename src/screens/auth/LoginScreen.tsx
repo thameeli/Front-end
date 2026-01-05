@@ -4,16 +4,18 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, Dimensions, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { RootStackParamList } from '../../types';
 import { useAuthStore } from '../../store/authStore';
-import { Button, Input, ErrorMessage, AnimatedView } from '../../components';
+import { Button, Input, ErrorMessage, AnimatedView, AlertModal } from '../../components';
 import { loginSchema, validateForm } from '../../utils/validation';
+import { validateEmail, validatePassword } from '../../utils/fieldValidation';
 import { colors } from '../../theme';
+import { ASSETS } from '../../constants/assets';
 import {
   isSmallDevice,
   isTablet,
@@ -31,12 +33,20 @@ const LoginScreen = () => {
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [apiError, setApiError] = useState<string>('');
+  const [shakeKey, setShakeKey] = useState(0);
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
   
   // Responsive dimensions
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const isSmall = isSmallDevice();
   const isTabletDevice = isTablet();
   const padding = getResponsivePadding();
+  
+  // Function to trigger shake animation by re-rendering with key
+  const triggerShake = () => {
+    setShakeKey(prev => prev + 1);
+  };
   
   // Update dimensions on orientation change
   useEffect(() => {
@@ -46,8 +56,14 @@ const LoginScreen = () => {
     return () => subscription?.remove();
   }, []);
 
+  // Debug: Log when showAlert changes
+  useEffect(() => {
+    console.log('🔵 [LoginScreen] showAlert state changed:', showAlert, 'message:', alertMessage);
+  }, [showAlert, alertMessage]);
+
   // Navigate when authentication state changes
   // Note: Don't clear errors here - only clear on successful login attempt
+  // IMPORTANT: Only clear error on successful authentication, never navigate on error
   useEffect(() => {
     if (isAuthenticated && user) {
       console.log('✅ Login successful, user authenticated:', {
@@ -57,8 +73,16 @@ const LoginScreen = () => {
       });
       // Clear error only on successful authentication
       setApiError('');
+      // Navigation will happen automatically via AppNavigator based on isAuthenticated
+    } else if (!isAuthenticated) {
+      // If user becomes unauthenticated (logout), clear any stale errors
+      // But keep errors if login just failed (apiError will be set by handleLogin)
+      // Only clear if there's no active login attempt
+      if (!isLoading) {
+        // Don't clear apiError here - let it persist until user tries again
+      }
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, isLoading]);
 
   const handleLogin = async () => {
     // Clear previous errors
@@ -76,14 +100,27 @@ const LoginScreen = () => {
     const result = await login(email, password);
     
     // Always check result and display error if login failed
+    // IMPORTANT: Do NOT navigate on error - stay on login screen
     if (!result.success) {
       const errorMessage = result.error || t('errors.somethingWentWrong') || 'Invalid email or password. Please try again.';
       setApiError(errorMessage);
-      console.log('❌ [LoginScreen] Login failed:', errorMessage);
+      setAlertMessage(errorMessage);
+      console.log('🔵 [LoginScreen] Setting showAlert to true, message:', errorMessage);
+      setShowAlert(true);
+      triggerShake(); // Visual feedback for error
+      console.log('❌ [LoginScreen] Login failed - staying on login screen:', errorMessage);
+      
+      // CRITICAL: Ensure we stay on login screen - do NOT navigate
+      // isAuthenticated will remain false, so AppNavigator will keep showing Login screen
+      // User must correct credentials and try again
+      return; // Exit early to prevent any further processing
     } else {
       // Clear any previous errors on success
       setApiError('');
-      console.log('✅ [LoginScreen] Login successful');
+      setShowAlert(false); // Hide any previous error modal
+      setShakeKey(0); // Reset shake
+      console.log('✅ [LoginScreen] Login successful - navigation will happen automatically');
+      // Navigation will happen automatically via AppNavigator when isAuthenticated becomes true
     }
   };
 
@@ -114,18 +151,21 @@ const LoginScreen = () => {
           <AnimatedView animation="fade" delay={0} className="mb-12">
             <View className="items-center mb-8">
               <View style={{
-                width: isSmall ? 60 : isTabletDevice ? 100 : 80,
-                height: isSmall ? 60 : isTabletDevice ? 100 : 80,
-                borderRadius: isSmall ? 30 : isTabletDevice ? 50 : 40,
+                width: isSmall ? 100 : isTabletDevice ? 150 : 120,
+                height: isSmall ? 100 : isTabletDevice ? 150 : 120,
+                borderRadius: isSmall ? 50 : isTabletDevice ? 75 : 60,
                 backgroundColor: colors.primary[500] + '10',
                 justifyContent: 'center',
                 alignItems: 'center',
                 marginBottom: padding.vertical * 1.5,
               }}>
-                <Icon 
-                  name="store" 
-                  size={isSmall ? 30 : isTabletDevice ? 50 : 40} 
-                  color={colors.primary[500]} 
+                <Image 
+                  source={ASSETS.logo} 
+                  style={{
+                    width: isSmall ? 70 : isTabletDevice ? 110 : 90,
+                    height: isSmall ? 70 : isTabletDevice ? 110 : 90,
+                  }}
+                  resizeMode="contain"
                 />
               </View>
               <Text style={{
@@ -144,19 +184,31 @@ const LoginScreen = () => {
           </AnimatedView>
 
           {/* Form with Animation */}
-          <AnimatedView animation="slide" delay={100} enterFrom="bottom" className="flex-1">
+          <AnimatedView 
+            key={shakeKey}
+            animation="slide" 
+            delay={100} 
+            enterFrom="bottom" 
+            className="flex-1"
+          >
             <View className="mb-6">
-              {apiError && (
-                <ErrorMessage
-                  message={apiError}
-                  type="error"
-                  onDismiss={() => setApiError('')}
-                  style={{ marginBottom: 16 }}
-                />
-              )}
+                {apiError && (
+                  <ErrorMessage
+                    message={apiError}
+                    type="error"
+                    onDismiss={() => setApiError('')}
+                    style={{ 
+                      marginBottom: 16,
+                      backgroundColor: colors.error[50] || '#FEF2F2',
+                      borderLeftWidth: 4,
+                      borderLeftColor: colors.error[500] || '#EF4444',
+                      padding: 12,
+                      borderRadius: 8,
+                    }}
+                  />
+                )}
 
               <Input
-                label={t('auth.email')}
                 placeholder={t('auth.email')}
                 value={email}
                 onChangeText={(text) => {
@@ -172,12 +224,13 @@ const LoginScreen = () => {
                 autoComplete="email"
                 error={errors.email}
                 leftIcon="email-outline"
-                floatingLabel
+                validateOnChange={true}
+                showSuccess={true}
+                onValidate={validateEmail}
                 containerStyle={{ marginBottom: 20 }}
               />
 
               <Input
-                label={t('auth.password')}
                 placeholder={t('auth.password')}
                 value={password}
                 onChangeText={(text) => {
@@ -192,7 +245,9 @@ const LoginScreen = () => {
                 autoComplete="password"
                 error={errors.password}
                 leftIcon="lock-outline"
-                floatingLabel
+                validateOnChange={true}
+                showSuccess={true}
+                onValidate={validatePassword}
                 containerStyle={{ marginBottom: 8 }}
               />
 
@@ -229,6 +284,23 @@ const LoginScreen = () => {
           </AnimatedView>
         </View>
       </ScrollView>
+
+      {/* Custom Alert Modal */}
+      <AlertModal
+        visible={showAlert}
+        onClose={() => {
+          console.log('🔵 [LoginScreen] AlertModal onClose called');
+          setShowAlert(false);
+        }}
+        title="Login Failed"
+        message={alertMessage || 'Invalid email or password. Please check your credentials and try again.'}
+        type="error"
+        confirmText="OK"
+        onConfirm={() => {
+          console.log('🔵 [LoginScreen] AlertModal onConfirm called');
+          setShowAlert(false);
+        }}
+      />
     </KeyboardAvoidingView>
   );
 };

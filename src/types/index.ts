@@ -24,7 +24,8 @@ export interface Product {
   original_price_germany?: number; // Original price before discount
   original_price_denmark?: number; // Original price before discount
   discount_percentage?: number; // Discount percentage (0-100)
-  stock: number;
+  stock_germany: number;
+  stock_denmark: number;
   image_url?: string;
   active: boolean;
   created_at: string;
@@ -104,6 +105,7 @@ export type RootStackParamList = {
   AddProduct: undefined;
   EditProduct: { productId: string };
   AdminOrders: undefined;
+  AdminDelivery: undefined;
   AdminPickupPoints: undefined;
   AddPickupPoint: undefined;
   EditPickupPoint: { pickupPointId: string };

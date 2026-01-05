@@ -25,7 +25,10 @@ const CartItem: React.FC<CartItemProps> = ({
     ? item.product.price_germany
     : item.product.price_denmark;
   const subtotal = price * item.quantity;
-  const maxQuantity = item.product.stock;
+  const stock = country === COUNTRIES.GERMANY
+    ? item.product.stock_germany
+    : item.product.stock_denmark;
+  const maxQuantity = stock;
 
   return (
     <View style={styles.container}>
@@ -60,9 +63,9 @@ const CartItem: React.FC<CartItemProps> = ({
 
         <View style={styles.priceRow}>
           <Text style={styles.price}>{formatPrice(price, country)}</Text>
-          {item.product.stock > 0 && (
+          {stock > 0 && (
             <Text style={styles.stock}>
-              {item.product.stock} in stock
+              {stock} in stock
             </Text>
           )}
         </View>
@@ -73,7 +76,7 @@ const CartItem: React.FC<CartItemProps> = ({
             onChange={onQuantityChange}
             min={1}
             max={maxQuantity}
-            disabled={item.product.stock === 0}
+            disabled={stock === 0}
           />
           <Text style={styles.subtotal}>
             {formatPrice(subtotal, country)}

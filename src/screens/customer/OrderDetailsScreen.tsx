@@ -10,6 +10,7 @@ import { useCartStore } from '../../store/cartStore';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import { orderService } from '../../services/orderService';
+import { useOrderPolling } from '../../hooks/useOrderPolling';
 import { productService } from '../../services/productService';
 import { pickupPointService } from '../../services';
 import {
@@ -66,12 +67,31 @@ const OrderDetailsScreen = () => {
     ? user.country_preference 
     : (selectedCountry || COUNTRIES.GERMANY) as Country;
 
-  // Fetch order
-  const { data: order, isLoading: loadingOrder, error: orderError } = useQuery({
+  // Fetch order with real-time polling (only for pending/confirmed/out_for_delivery orders)
+  const shouldPoll = order?.status && ['pending', 'confirmed', 'out_for_delivery'].includes(order.status);
+  
+  const { order: polledOrder, isLoading: loadingOrder, error: orderError } = useOrderPolling({
+    orderId,
+    enabled: shouldPoll && !!orderId,
+    pollInterval: 10000, // Poll every 10 seconds
+    onStatusChange: (newStatus) => {
+      // Show notification when status changes
+      if (newStatus === 'out_for_delivery') {
+        Alert.alert('Order Update', 'Your order is now out for delivery!');
+      } else if (newStatus === 'delivered') {
+        Alert.alert('Order Delivered', 'Your order has been delivered!');
+      }
+    },
+  });
+
+  // Use polled order if available, otherwise fallback to regular query
+  const { data: fallbackOrder } = useQuery({
     queryKey: ['order', orderId],
     queryFn: () => orderService.getOrderById(orderId),
-    enabled: !!orderId,
+    enabled: !!orderId && !shouldPoll,
   });
+
+  const order = polledOrder || fallbackOrder;
 
   // Fetch order items
   const { data: orderItems = [], isLoading: loadingItems } = useQuery({

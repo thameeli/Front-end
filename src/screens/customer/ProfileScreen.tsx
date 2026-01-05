@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
@@ -12,9 +12,11 @@ import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { RootStackParamList } from '../../types';
 import { useAuthStore } from '../../store/authStore';
-import { AppHeader, CountrySelector, Card, AnimatedView, Badge } from '../../components';
+import { useCartStore } from '../../store/cartStore';
+import { AppHeader, CountrySelector, Card, AnimatedView, Badge, useToast } from '../../components';
 import { formatPhoneNumber } from '../../utils/regionalFormatting';
 import { COUNTRIES } from '../../constants';
+import { ASSETS } from '../../constants/assets';
 import type { Country } from '../../constants';
 import { colors } from '../../theme';
 import { isTablet, getResponsivePadding, getResponsiveFontSize } from '../../utils/responsive';
@@ -25,6 +27,8 @@ const ProfileScreen = () => {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
   const { t } = useTranslation();
   const { user, logout, updateCountryPreference } = useAuthStore();
+  const { setSelectedCountry } = useCartStore();
+  const { showToast } = useToast();
   const padding = getResponsivePadding();
 
   const handleLogout = async () => {
@@ -48,7 +52,25 @@ const ProfileScreen = () => {
 
   const handleCountryChange = async (country: Country) => {
     if (user) {
-      await updateCountryPreference(country);
+      try {
+        // Update user's country preference in database
+        await updateCountryPreference(country);
+        // Also update cart store to sync country selection
+        await setSelectedCountry(country);
+        // Show success message
+        showToast({
+          message: `Country preference updated to ${country === COUNTRIES.GERMANY ? 'Germany' : 'Denmark'}`,
+          type: 'success',
+          duration: 2000,
+        });
+      } catch (error: any) {
+        console.error('Error updating country preference:', error);
+        showToast({
+          message: error.message || 'Failed to update country preference. Please try again.',
+          type: 'error',
+          duration: 3000,
+        });
+      }
     }
   };
 
@@ -80,7 +102,15 @@ const ProfileScreen = () => {
           >
             <View className="items-center">
               <View className="w-24 h-24 rounded-full bg-white/20 justify-center items-center mb-4 border-4 border-white/30">
-                <Icon name="account-circle" size={64} color="white" />
+                {user.name || user.email ? (
+                  <Icon name="account-circle" size={64} color="white" />
+                ) : (
+                  <Image 
+                    source={ASSETS.logo} 
+                    style={{ width: 64, height: 64 }}
+                    resizeMode="contain"
+                  />
+                )}
               </View>
               <Text style={{ fontSize: getResponsiveFontSize(24), fontWeight: 'bold', color: 'white', marginBottom: 8 }}>
                 {user.name || user.email}

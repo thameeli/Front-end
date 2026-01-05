@@ -15,9 +15,10 @@ import { RootStackParamList } from '../../types';
 import { useAuthStore } from '../../store/authStore';
 import { useCartStore } from '../../store/cartStore';
 import { useProduct, useProducts } from '../../hooks/useProducts';
+import { requireAuth } from '../../utils/requireAuth';
 import { ImageGallery, Button, LoadingScreen, ErrorMessage, AppHeader, QuantitySelector, Badge, AnimatedView, RatingDisplay, ReviewCard, FavoriteButton, ProductCard } from '../../components';
 import { productService } from '../../services/productService';
-import { formatPrice, isInStock } from '../../utils/productUtils';
+import { formatPrice, isInStock, getProductStock } from '../../utils/productUtils';
 import { mediumHaptic, successHaptic } from '../../utils/hapticFeedback';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
@@ -68,6 +69,16 @@ const ProductDetailsScreen = () => {
   const country = (user?.country_preference || selectedCountry || COUNTRIES.GERMANY) as Country;
   const { data: product, isLoading, error, refetch } = useProduct(productId);
   
+  // Add to recently viewed when product loads
+  useEffect(() => {
+    if (product) {
+      addToRecentlyViewed(product.id, product.category);
+    }
+  }, [product]);
+  
+  // Get country-specific stock
+  const stock = product ? getProductStock(product, country) : 0;
+  
   // Fetch all products for related products
   const { data: allProducts = [] } = useProducts({ active: true });
   
@@ -86,7 +97,11 @@ const ProductDetailsScreen = () => {
     try {
       const isAvailable = await Sharing.isAvailableAsync();
       if (!isAvailable) {
-        Alert.alert('Sharing not available', 'Sharing is not available on this device');
+        showToast({
+          message: 'Sharing is not available on this device',
+          type: 'warning',
+          duration: 2000,
+        });
         return;
       }
       
@@ -97,7 +112,11 @@ const ProductDetailsScreen = () => {
         dialogTitle: `Share ${product.name}`,
       });
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to share product');
+      showToast({
+        message: error.message || 'Failed to share product',
+        type: 'error',
+        duration: 3000,
+      });
     }
   };
 
@@ -123,40 +142,46 @@ const ProductDetailsScreen = () => {
   const inStock = isInStock(product);
   const images = product.image_url ? [product.image_url] : [];
 
-  const handleAddToCart = () => {
-    if (!isAuthenticated) {
-      Alert.alert(
-        t('auth.loginRequired') || 'Login Required',
-        t('auth.loginToAddCart') || 'Please login or sign up to add items to cart',
-        [
-          { text: t('common.cancel') || 'Cancel', style: 'cancel' },
-          {
-            text: t('auth.login') || 'Login',
-            onPress: () => navigation.navigate('Login'),
-          },
-          {
-            text: t('auth.register') || 'Sign Up',
-            onPress: () => navigation.navigate('Register'),
-            style: 'default',
-          },
-        ]
-      );
+  const handleAddToCart = async () => {
+    // Check authentication - if not authenticated, prompt to login/register
+    if (!requireAuth({
+      navigation,
+      isAuthenticated,
+      t,
+    })) {
       return;
     }
 
     if (!inStock) {
-      Alert.alert('Out of Stock', 'This product is currently out of stock.');
+      showToast({
+        message: 'This product is currently out of stock',
+        type: 'warning',
+        duration: 3000,
+      });
       return;
     }
 
-    addItem(product, quantity, country);
-    successHaptic();
-    Alert.alert('Success', 'Product added to cart!');
+    try {
+      await addItem(product, quantity, country);
+      successHaptic();
+      showToast({
+        message: 'Product added to cart!',
+        type: 'success',
+        duration: 2000,
+      });
+    } catch (error: any) {
+      showToast({
+        message: error.message || 'Failed to add product to cart',
+        type: 'error',
+        duration: 3000,
+      });
+    }
   };
 
   const handleQuantityChange = (delta: number) => {
     const newQuantity = quantity + delta;
-    if (newQuantity >= 1 && newQuantity <= product.stock) {
+    const stock = getProductStock(product, country);
+    if (newQuantity >= 1 && newQuantity <= stock) {
       setQuantity(newQuantity);
     }
   };
@@ -221,7 +246,7 @@ const ProductDetailsScreen = () => {
                   <View className="flex-row items-center">
                     <Icon name="check-circle" size={16} color={colors.success[500]} />
                     <Text className="text-sm text-success-500 ml-1 font-medium">
-                      In Stock ({product.stock} available)
+                      In Stock ({stock} available)
                     </Text>
                   </View>
                 ) : (
@@ -274,12 +299,12 @@ const ProductDetailsScreen = () => {
               <QuantitySelector
                 value={quantity}
                 onChange={(newQuantity) => {
-                  if (newQuantity >= 1 && newQuantity <= product.stock) {
+                  if (newQuantity >= 1 && newQuantity <= stock) {
                     setQuantity(newQuantity);
                   }
                 }}
                 min={1}
-                max={product.stock}
+                max={stock}
               />
             </View>
           )}

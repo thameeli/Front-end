@@ -26,6 +26,10 @@ interface InputProps extends TextInputProps {
   accessibilityLabel?: string;
   accessibilityHint?: string;
   accessibilityRole?: 'none' | 'text' | 'search' | 'none';
+  showSuccess?: boolean; // Show success state when valid
+  helperText?: string; // Helper text below input
+  validateOnChange?: boolean; // Validate as user types
+  onValidate?: (value: string) => string | undefined; // Custom validation function
 }
 
 const AnimatedText = Animated.createAnimatedComponent(Text);
@@ -45,15 +49,24 @@ const Input = React.forwardRef<TextInput, InputProps>(({
   accessibilityLabel,
   accessibilityHint,
   accessibilityRole = 'text',
+  showSuccess = false,
+  helperText,
+  validateOnChange = false,
+  onValidate,
+  onChangeText,
   ...props
 }, ref) => {
   const [isFocused, setIsFocused] = useState(false);
+  const [touched, setTouched] = useState(false);
+  const [validationError, setValidationError] = useState<string | undefined>();
   const hasValue = Boolean(value && value.toString().length > 0);
   const shouldFloat = floatingLabel && (isFocused || hasValue);
+  const displayError = error || (touched && validateOnChange ? validationError : undefined);
+  const isValid = showSuccess && hasValue && !displayError && touched;
 
   const labelPosition = useSharedValue(hasValue ? 1 : 0);
   const labelScale = useSharedValue(hasValue ? 0.85 : 1);
-  const borderColor = useSharedValue(error ? 1 : isFocused ? 0.5 : 0);
+  const borderColor = useSharedValue(displayError ? 1 : isValid ? 2 : isFocused ? 0.5 : 0);
   const shakeTranslateX = useSharedValue(0);
 
   React.useEffect(() => {
@@ -67,14 +80,23 @@ const Input = React.forwardRef<TextInput, InputProps>(({
     });
   }, [shouldFloat]);
 
+  // Handle validation on change
+  const handleChangeText = (text: string) => {
+    if (validateOnChange && onValidate && touched) {
+      const validationResult = onValidate(text);
+      setValidationError(validationResult);
+    }
+    onChangeText?.(text);
+  };
+
   React.useEffect(() => {
     borderColor.value = withTiming(
-      error ? 1 : isFocused ? 0.5 : 0,
+      displayError ? 1 : isValid ? 2 : isFocused ? 0.5 : 0,
       { duration: ANIMATION_DURATION.fast }
     );
     
     // Shake animation on error
-    if (error) {
+    if (displayError) {
       shakeTranslateX.value = withSequence(
         withTiming(-10, { duration: 50 }),
         withTiming(10, { duration: 50 }),
@@ -94,6 +116,11 @@ const Input = React.forwardRef<TextInput, InputProps>(({
 
   const handleBlur = (e: any) => {
     setIsFocused(false);
+    setTouched(true);
+    if (validateOnChange && onValidate && value) {
+      const validationResult = onValidate(value.toString());
+      setValidationError(validationResult);
+    }
     onBlur?.(e);
   };
 
@@ -114,12 +141,14 @@ const Input = React.forwardRef<TextInput, InputProps>(({
   const borderAnimatedStyle = useAnimatedStyle(() => {
     const color = interpolate(
       borderColor.value,
-      [0, 0.5, 1],
-      [0, 1, 2] // 0: neutral, 1: primary, 2: error
+      [0, 0.5, 1, 2],
+      [0, 1, 2, 3] // 0: neutral, 1: primary, 2: error, 3: success
     );
 
     let borderColorValue: string = colors.neutral[300] as string;
-    if (color >= 2) {
+    if (color >= 3) {
+      borderColorValue = colors.success[500] as string;
+    } else if (color >= 2) {
       borderColorValue = colors.error[500] as string;
     } else if (color >= 1) {
       borderColorValue = colors.primary[500] as string;
@@ -189,9 +218,10 @@ const Input = React.forwardRef<TextInput, InputProps>(({
             value={value}
             onFocus={handleFocus}
             onBlur={handleBlur}
+            onChangeText={handleChangeText}
             style={style}
             accessibilityLabel={accessibilityLabel || label}
-            accessibilityHint={accessibilityHint || error}
+            accessibilityHint={accessibilityHint || displayError || helperText}
             accessibilityRole={accessibilityRole}
             accessibilityState={{ 
               disabled: props.editable === false,
@@ -199,7 +229,13 @@ const Input = React.forwardRef<TextInput, InputProps>(({
             {...props}
           />
 
-          {rightIcon && (
+          {isValid && (
+            <View className="ml-2">
+              <Icon name="check-circle" size={20} color={colors.success[500]} />
+            </View>
+          )}
+
+          {rightIcon && !isValid && (
             <View className="ml-2">
               <Icon name={rightIcon as any} size={20} color={colors.neutral[500]} />
             </View>
@@ -207,9 +243,17 @@ const Input = React.forwardRef<TextInput, InputProps>(({
         </AnimatedView>
       </View>
 
-      {error && (
+      {(displayError || helperText) && (
         <View className="mt-1">
-          <Text className="text-xs text-error-500">{error}</Text>
+          {displayError ? (
+            <Text className="text-xs text-error-500" accessibilityRole="alert">
+              {displayError}
+            </Text>
+          ) : (
+            helperText ? (
+              <Text className="text-xs text-neutral-500">{helperText}</Text>
+            ) : null
+          )}
         </View>
       )}
     </View>

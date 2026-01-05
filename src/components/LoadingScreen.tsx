@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -13,6 +13,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import SkeletonLoader from './SkeletonLoader';
+import { ASSETS } from '../constants/assets';
 import { ANIMATION_DURATION, EASING, MICRO_INTERACTIONS } from '../utils/animations';
 
 const AnimatedView = Animated.createAnimatedComponent(View);
@@ -71,7 +72,11 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
     <View style={styles.simpleContainer}>
       <View style={styles.simpleContent}>
         <AnimatedView style={pulseStyle}>
-          <SkeletonLoader width={60} height={60} borderRadius={30} style={styles.mb4} />
+          <Image 
+            source={ASSETS.logo} 
+            style={styles.logo}
+            resizeMode="contain"
+          />
         </AnimatedView>
         {message && (
           <Text style={styles.message}>{message}</Text>
@@ -117,6 +122,10 @@ const styles = StyleSheet.create({
   },
   mb4: {
     marginBottom: 16,
+  },
+  logo: {
+    width: 80,
+    height: 80,
   },
   message: {
     fontSize: 16,

@@ -6,23 +6,37 @@ import { formatCurrency } from './regionalFormatting';
 /**
  * Format price for a specific country (uses regional formatting)
  */
-export const formatPrice = (price: number, country: Country): string => {
+export const formatPrice = (price: number | null | undefined, country: Country): string => {
   return formatCurrency(price, country);
 };
 
 /**
  * Get product price for a specific country
  * Inlined to avoid importing productService which causes "property is not configurable" errors
+ * Returns 0 if price is not set or invalid
  */
 export const getProductPrice = (product: Product, country: Country): number => {
-  return country === COUNTRIES.GERMANY ? product.price_germany : product.price_denmark;
+  const price = country === COUNTRIES.GERMANY ? product.price_germany : product.price_denmark;
+  // Validate price - return 0 if null, undefined, or NaN
+  if (price === null || price === undefined || isNaN(price) || price < 0) {
+    console.warn(`Product ${product.id} has invalid price for ${country}:`, price);
+    return 0;
+  }
+  return price;
 };
 
 /**
- * Check if product is in stock
+ * Get product stock for a specific country
  */
-export const isInStock = (product: Product): boolean => {
-  return product.stock > 0;
+export const getProductStock = (product: Product, country: Country): number => {
+  return country === COUNTRIES.GERMANY ? product.stock_germany : product.stock_denmark;
+};
+
+/**
+ * Check if product is in stock for a specific country
+ */
+export const isInStock = (product: Product, country: Country): boolean => {
+  return getProductStock(product, country) > 0;
 };
 
 /**

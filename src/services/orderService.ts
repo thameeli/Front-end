@@ -1,5 +1,9 @@
 // Lazy import Supabase to avoid initialization during module load
 import { Order, OrderItem, OrderStatus, PaymentMethod, PaymentStatus } from '../types';
+import { withTimeout, DEFAULT_TIMEOUTS } from '../utils/requestTimeout';
+import { offlineQueue } from '../utils/offlineQueue';
+import { isOnline } from '../utils/networkUtils';
+import { queueRequest } from '../utils/requestQueue';
 
 // Import Supabase lazily - only when needed
 function getSupabase() {
@@ -18,6 +22,7 @@ export interface CreateOrderData {
     quantity: number;
     price: number;
   }>;
+  idempotency_key?: string; // Optional idempotency key to prevent duplicate orders
 }
 
 export const orderService = {
@@ -25,103 +30,151 @@ export const orderService = {
    * Get all orders for a user
    */
   async getOrders(userId: string): Promise<Order[]> {
-    try {
-      const supabase = getSupabase();
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+    return withTimeout(
+      (async () => {
+        try {
+          const supabase = getSupabase();
+          const { data, error } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
 
-      if (error) {
-        throw error;
+          if (error) {
+            throw error;
+          }
+
+          return data || [];
+        } catch (error) {
+          console.error('Error fetching orders:', error);
+          throw error;
+        }
+      })(),
+      {
+        timeout: DEFAULT_TIMEOUTS.MEDIUM,
+        errorMessage: 'Failed to fetch orders: request timed out',
       }
-
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-      throw error;
-    }
+    );
   },
 
   /**
    * Get all orders (Admin only)
    */
   async getAllOrders(filters?: { status?: OrderStatus }): Promise<Order[]> {
-    try {
-      const supabase = getSupabase();
-      let query = supabase
-        .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false });
+    return withTimeout(
+      (async () => {
+        try {
+          const supabase = getSupabase();
+          let query = supabase
+            .from('orders')
+            .select('*')
+            .order('created_at', { ascending: false });
 
-      if (filters?.status) {
-        query = query.eq('status', filters.status);
+          if (filters?.status) {
+            query = query.eq('status', filters.status);
+          }
+
+          const { data, error } = await query;
+
+          if (error) {
+            throw error;
+          }
+
+          return data || [];
+        } catch (error) {
+          console.error('Error fetching all orders:', error);
+          throw error;
+        }
+      })(),
+      {
+        timeout: DEFAULT_TIMEOUTS.MEDIUM,
+        errorMessage: 'Failed to fetch orders: request timed out',
       }
-
-      const { data, error } = await query;
-
-      if (error) {
-        throw error;
-      }
-
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching all orders:', error);
-      throw error;
-    }
+    );
   },
 
   /**
    * Get a single order by ID
    */
   async getOrderById(orderId: string): Promise<Order | null> {
-    try {
-      const supabase = getSupabase();
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('id', orderId)
-        .single();
+    return withTimeout(
+      (async () => {
+        try {
+          const supabase = getSupabase();
+          const { data, error } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('id', orderId)
+            .single();
 
-      if (error) {
-        throw error;
+          if (error) {
+            throw error;
+          }
+
+          return data;
+        } catch (error) {
+          console.error('Error fetching order:', error);
+          throw error;
+        }
+      })(),
+      {
+        timeout: DEFAULT_TIMEOUTS.MEDIUM,
+        errorMessage: 'Failed to fetch order: request timed out',
       }
-
-      return data;
-    } catch (error) {
-      console.error('Error fetching order:', error);
-      throw error;
-    }
+    );
   },
 
   /**
    * Get order items for an order
    */
   async getOrderItems(orderId: string): Promise<OrderItem[]> {
-    try {
-      const supabase = getSupabase();
-      const { data, error } = await supabase
-        .from('order_items')
-        .select('*')
-        .eq('order_id', orderId);
+    return withTimeout(
+      (async () => {
+        try {
+          const supabase = getSupabase();
+          const { data, error } = await supabase
+            .from('order_items')
+            .select('*')
+            .eq('order_id', orderId);
 
-      if (error) {
-        throw error;
+          if (error) {
+            throw error;
+          }
+
+          return data || [];
+        } catch (error) {
+          console.error('Error fetching order items:', error);
+          throw error;
+        }
+      })(),
+      {
+        timeout: DEFAULT_TIMEOUTS.MEDIUM,
+        errorMessage: 'Failed to fetch order items: request timed out',
       }
-
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching order items:', error);
-      throw error;
-    }
+    );
   },
 
   /**
-   * Create a new order
+   * Create a new order atomically with stock reservation
+   * Uses database function to ensure atomicity and prevent duplicate orders
+   * Supports offline queueing if network is unavailable
+   * Uses request queue for critical operation management
    */
   async createOrder(orderData: CreateOrderData): Promise<Order> {
-    try {
+    // Queue this critical operation with high priority
+    return queueRequest(
+      async () => {
+        return this.createOrderInternal(orderData);
+      },
+      'high'
+    );
+  },
+
+  /**
+   * Internal order creation logic (not queued, called by createOrder)
+   * @private
+   */
+  async createOrderInternal(orderData: CreateOrderData): Promise<Order> {
       // Calculate subtotal from items
       const subtotal = orderData.items.reduce(
         (sum, item) => sum + item.price * item.quantity,
@@ -131,49 +184,73 @@ export const orderService = {
       // Add delivery fee to total
       const totalAmount = subtotal + (orderData.delivery_fee || 0);
 
-      // Create order
-      const supabase = getSupabase();
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          user_id: orderData.user_id,
-          country: orderData.country,
-          payment_method: orderData.payment_method,
-          payment_status: orderData.payment_method === 'cod' ? 'pending' : 'pending',
-          total_amount: totalAmount,
-          status: 'pending',
-          pickup_point_id: orderData.pickup_point_id,
-          delivery_address: orderData.delivery_address,
-        })
-        .select()
-        .single();
+      // Generate idempotency key if not provided
+      const idempotencyKey = orderData.idempotency_key || 
+        `${orderData.user_id}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
-      if (orderError) {
-        throw orderError;
-      }
-
-      // Create order items
-      const orderItems = orderData.items.map((item) => ({
-        order_id: order.id,
+      // Prepare items as JSONB for database function
+      const itemsJson = orderData.items.map((item) => ({
         product_id: item.product_id,
         quantity: item.quantity,
         price: item.price,
-        subtotal: item.price * item.quantity,
       }));
 
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
+      const supabase = getSupabase();
+      
+      // Use atomic database function to create order with timeout
+      const { data: orderId, error: functionError } = await withTimeout(
+        supabase.rpc(
+          'create_order_atomic',
+          {
+            p_user_id: orderData.user_id,
+            p_country: orderData.country,
+            p_payment_method: orderData.payment_method,
+            p_total_amount: totalAmount,
+            p_items: itemsJson as any,
+            p_pickup_point_id: orderData.pickup_point_id || null,
+            p_delivery_address: orderData.delivery_address || null,
+            p_delivery_fee: orderData.delivery_fee || 0,
+            p_idempotency_key: idempotencyKey,
+          }
+        ),
+        {
+          timeout: DEFAULT_TIMEOUTS.LONG,
+          errorMessage: 'Order creation timed out',
+        }
+      );
 
-      if (itemsError) {
-        throw itemsError;
+      if (functionError) {
+        // If it's a duplicate order (idempotency key conflict), fetch the existing order
+        if (functionError.message?.includes('duplicate') || functionError.code === '23505') {
+          const { data: existingOrder } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('idempotency_key', idempotencyKey)
+            .single();
+          
+          if (existingOrder) {
+            return existingOrder;
+          }
+        }
+        throw functionError;
+      }
+
+      if (!orderId) {
+        throw new Error('Order creation failed: No order ID returned');
+      }
+
+      // Fetch the created order with all details
+      const { data: order, error: fetchError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', orderId)
+        .single();
+
+      if (fetchError || !order) {
+        throw fetchError || new Error('Failed to fetch created order');
       }
 
       return order;
-    } catch (error) {
-      console.error('Error creating order:', error);
-      throw error;
-    }
   },
 
   /**

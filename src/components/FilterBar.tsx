@@ -15,6 +15,9 @@ interface FilterBarProps {
   onCategoryChange: (category: ProductCategory | 'all') => void;
   sortBy: 'name' | 'price_asc' | 'price_desc';
   onSortChange: (sort: 'name' | 'price_asc' | 'price_desc') => void;
+  showClearFilters?: boolean; // Show clear filters button
+  onClearFilters?: () => void; // Clear all filters callback
+  resultCount?: number; // Number of filtered results
 }
 
 const FilterBar: React.FC<FilterBarProps> = ({
@@ -22,9 +25,35 @@ const FilterBar: React.FC<FilterBarProps> = ({
   onCategoryChange,
   sortBy,
   onSortChange,
+  showClearFilters = false,
+  onClearFilters,
+  resultCount,
 }) => {
+  const hasActiveFilters = selectedCategory !== 'all' || sortBy !== 'name';
+  
   return (
     <View style={styles.container}>
+      {(showClearFilters || resultCount !== undefined) && (
+        <View style={styles.headerRow}>
+          {resultCount !== undefined && (
+            <Text style={styles.resultCount}>
+              {resultCount} {resultCount === 1 ? 'result' : 'results'}
+            </Text>
+          )}
+          {showClearFilters && hasActiveFilters && onClearFilters && (
+            <TouchableOpacity
+              onPress={onClearFilters}
+              style={styles.clearButton}
+              activeOpacity={0.7}
+              accessibilityLabel="Clear all filters"
+              accessibilityRole="button"
+            >
+              <Icon name="close-circle" size={16} color={colors.primary[500]} />
+              <Text style={styles.clearButtonText}>Clear Filters</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
       {/* Category Section */}
       <View style={styles.section}>
         <View style={styles.labelContainer}>
@@ -257,6 +286,32 @@ const styles = StyleSheet.create({
   },
   buttonIcon: {
     marginRight: 6,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.neutral[200],
+  },
+  resultCount: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.neutral[700],
+  },
+  clearButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  clearButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primary[500],
+    marginLeft: 4,
   },
 });
 

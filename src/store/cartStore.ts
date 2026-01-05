@@ -3,15 +3,47 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CartItem, Product } from '../types';
 import { STORAGE_KEYS } from '../constants';
 import { validateStock, validateQuantity } from '../utils/cartValidation';
+import { getProductStock } from '../utils/productUtils';
+import { COUNTRIES } from '../constants';
+
+// Mutex to prevent concurrent cart operations
+let cartMutex = false;
+let cartMutexQueue: Array<() => void> = [];
+
+const acquireCartMutex = async (): Promise<() => void> => {
+  return new Promise((resolve) => {
+    if (!cartMutex) {
+      cartMutex = true;
+      resolve(() => {
+        cartMutex = false;
+        if (cartMutexQueue.length > 0) {
+          const next = cartMutexQueue.shift();
+          if (next) next();
+        }
+      });
+    } else {
+      cartMutexQueue.push(() => {
+        cartMutex = true;
+        resolve(() => {
+          cartMutex = false;
+          if (cartMutexQueue.length > 0) {
+            const next = cartMutexQueue.shift();
+            if (next) next();
+          }
+        });
+      });
+    }
+  });
+};
 
 interface CartState {
   items: CartItem[];
   selectedCountry: 'germany' | 'denmark' | null;
   countrySelected: boolean;
-  addItem: (product: Product, quantity: number, country: 'germany' | 'denmark') => void;
-  removeItem: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
-  clearCart: () => void;
+  addItem: (product: Product, quantity: number, country: 'germany' | 'denmark') => Promise<void>;
+  removeItem: (productId: string) => Promise<void>;
+  updateQuantity: (productId: string, quantity: number) => Promise<void>;
+  clearCart: () => Promise<void>;
   getTotal: () => number;
   getItemCount: () => number;
   loadCart: () => Promise<void>;
@@ -25,92 +57,118 @@ export const useCartStore = create<CartState>((set, get) => ({
   selectedCountry: null,
   countrySelected: false,
 
-  addItem: (product, quantity, country) => {
-    // Validate stock
-    const stockValidation = validateStock(product, quantity);
-    if (!stockValidation.isValid) {
-      console.warn(stockValidation.error);
-      return;
-    }
-
-    // Validate quantity
-    const quantityValidation = validateQuantity(quantity, 1, product.stock);
-    if (!quantityValidation.isValid) {
-      console.warn(quantityValidation.error);
-      return;
-    }
-
-    set((state) => {
-      const existingItem = state.items.find(
-        (item) => item.product.id === product.id && item.selectedCountry === country
-      );
-
-      if (existingItem) {
-        const newQuantity = existingItem.quantity + quantity;
-        // Check if new quantity exceeds stock
-        if (newQuantity > product.stock) {
-          console.warn(`Cannot add more than ${product.stock} items`);
-          return state;
-        }
-        const updatedItems = state.items.map((item) =>
-          item.product.id === product.id && item.selectedCountry === country
-            ? { ...item, quantity: newQuantity }
-            : item
-        );
-        get().saveCart();
-        return { items: updatedItems };
-      } else {
-        const newItems = [...state.items, { product, quantity, selectedCountry: country }];
-        get().saveCart();
-        return { items: newItems };
-      }
-    });
-  },
-
-  removeItem: (productId) => {
-    set((state) => {
-      const filteredItems = state.items.filter((item) => item.product.id !== productId);
-      get().saveCart();
-      return { items: filteredItems };
-    });
-  },
-
-  updateQuantity: (productId, quantity) => {
-    if (quantity <= 0) {
-      get().removeItem(productId);
-      return;
-    }
-
-    set((state) => {
-      const item = state.items.find((item) => item.product.id === productId);
-      if (!item) return state;
-
+  addItem: async (product, quantity, country) => {
+    const release = await acquireCartMutex();
+    try {
+      const stock = getProductStock(product, country);
       // Validate stock
-      if (quantity > item.product.stock) {
-        console.warn(`Cannot set quantity to ${quantity}, max is ${item.product.stock}`);
-        return state;
+      const stockValidation = validateStock(product, quantity, country);
+      if (!stockValidation.isValid) {
+        console.warn(stockValidation.error);
+        return;
       }
 
       // Validate quantity
-      const quantityValidation = validateQuantity(quantity, 1, item.product.stock);
+      const quantityValidation = validateQuantity(quantity, 1, stock);
       if (!quantityValidation.isValid) {
         console.warn(quantityValidation.error);
-        return state;
+        return;
       }
 
-      const updatedItems = state.items.map((item) =>
-        item.product.id === productId
-          ? { ...item, quantity }
-          : item
-      );
-      get().saveCart();
-      return { items: updatedItems };
-    });
+      set((state) => {
+        const existingItem = state.items.find(
+          (item) => item.product.id === product.id && item.selectedCountry === country
+        );
+
+        if (existingItem) {
+          const newQuantity = existingItem.quantity + quantity;
+          // Check if new quantity exceeds stock
+          if (newQuantity > stock) {
+            console.warn(`Cannot add more than ${stock} items`);
+            return state;
+          }
+          const updatedItems = state.items.map((item) =>
+            item.product.id === product.id && item.selectedCountry === country
+              ? { ...item, quantity: newQuantity }
+              : item
+          );
+          // Save cart asynchronously but don't wait
+          get().saveCart().catch(console.error);
+          return { items: updatedItems };
+        } else {
+          const newItems = [...state.items, { product, quantity, selectedCountry: country }];
+          // Save cart asynchronously but don't wait
+          get().saveCart().catch(console.error);
+          return { items: newItems };
+        }
+      });
+    } finally {
+      release();
+    }
   },
 
-  clearCart: () => {
-    set({ items: [] });
-    AsyncStorage.removeItem(STORAGE_KEYS.CART);
+  removeItem: async (productId) => {
+    const release = await acquireCartMutex();
+    try {
+      set((state) => {
+        const filteredItems = state.items.filter((item) => item.product.id !== productId);
+        // Save cart asynchronously but don't wait
+        get().saveCart().catch(console.error);
+        return { items: filteredItems };
+      });
+    } finally {
+      release();
+    }
+  },
+
+  updateQuantity: async (productId, quantity) => {
+    if (quantity <= 0) {
+      await get().removeItem(productId);
+      return;
+    }
+
+    const release = await acquireCartMutex();
+    try {
+      set((state) => {
+        const item = state.items.find((item) => item.product.id === productId);
+        if (!item) return state;
+
+        const stock = getProductStock(item.product, item.selectedCountry);
+        // Validate stock
+        if (quantity > stock) {
+          console.warn(`Cannot set quantity to ${quantity}, max is ${stock}`);
+          return state;
+        }
+
+        // Validate quantity
+        const quantityValidation = validateQuantity(quantity, 1, stock);
+        if (!quantityValidation.isValid) {
+          console.warn(quantityValidation.error);
+          return state;
+        }
+
+        const updatedItems = state.items.map((item) =>
+          item.product.id === productId
+            ? { ...item, quantity }
+            : item
+        );
+        // Save cart asynchronously but don't wait
+        get().saveCart().catch(console.error);
+        return { items: updatedItems };
+      });
+    } finally {
+      release();
+    }
+  },
+
+  clearCart: async () => {
+    const release = await acquireCartMutex();
+    try {
+      set({ items: [] });
+      await AsyncStorage.removeItem(STORAGE_KEYS.CART);
+    } finally {
+      release();
+    }
   },
 
   getTotal: () => {

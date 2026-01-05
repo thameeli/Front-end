@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert, RefreshControl, Dimensions } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Alert, RefreshControl, Dimensions, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -16,10 +16,12 @@ import { RootStackParamList } from '../../types';
 import { useAuthStore } from '../../store/authStore';
 import { useProducts } from '../../hooks/useProducts';
 import { useCartStore } from '../../store/cartStore';
-import { ProductCard, SearchBar, FilterBar, EmptyState, LoadingScreen, ErrorMessage, Button, CountrySelectionModal, AnimatedView, SkeletonCard, ContentFadeIn, SkeletonLoader, PromotionalBanner, CategoryIconRow } from '../../components';
+import { ProductCard, SearchBar, FilterBar, EmptyState, LoadingScreen, ErrorMessage, Button, CountrySelectionModal, AnimatedView, SkeletonCard, ContentFadeIn, SkeletonLoader, PromotionalBanner, CategoryIconRow, RecentlyViewedProducts, TrendingProducts, ProductRecommendations, useToast } from '../../components';
 import { getFilteredProducts } from '../../utils/productUtils';
 import { debounce } from '../../utils/debounce';
+import { requireAuth } from '../../utils/requireAuth';
 import { COUNTRIES, PRODUCT_CATEGORIES } from '../../constants';
+import { ASSETS } from '../../constants/assets';
 import type { ProductCategory } from '../../types';
 import type { Country } from '../../constants';
 import { colors } from '../../theme';
@@ -37,6 +39,7 @@ const HomeScreen = () => {
   const { t } = useTranslation();
   const { isAuthenticated, user } = useAuthStore();
   const { addItem, selectedCountry, countrySelected, setSelectedCountry, loadCountry } = useCartStore();
+  const { showToast } = useToast();
   
   // Load country on mount
   useEffect(() => {
@@ -124,45 +127,60 @@ const HomeScreen = () => {
       return;
     }
 
-    if (!isAuthenticated) {
-      Alert.alert(
-        t('auth.loginRequired') || 'Create Account to Order',
-        t('auth.loginToAddCart') || 'Sign up now to add items to cart and start ordering fresh products!',
-        [
-          { text: t('common.cancel') || 'Continue Browsing', style: 'cancel' },
-          {
-            text: t('auth.login') || 'Login',
-            onPress: () => (navigation as any).navigate('Login'),
-          },
-          {
-            text: t('auth.register') || 'Sign Up Free',
-            onPress: () => (navigation as any).navigate('Register'),
-            style: 'default',
-          },
-        ]
-      );
+    // Check authentication - if not authenticated, prompt to login/register
+    if (!requireAuth({
+      navigation,
+      isAuthenticated,
+      t,
+    })) {
       return;
     }
 
-    addItem(product, 1, country);
-  }, [countrySelected, selectedCountry, isAuthenticated, country, addItem, navigation, t]);
+    // Add item to cart with toast feedback
+    addItem(product, 1, country)
+      .then(() => {
+        const { successHaptic } = require('../../utils/hapticFeedback');
+        successHaptic();
+        showToast({
+          message: `${product.name} added to cart`,
+          type: 'success',
+          duration: 2000,
+        });
+      })
+      .catch((error) => {
+        console.error('Error adding to cart:', error);
+        const { errorHaptic } = require('../../utils/hapticFeedback');
+        errorHaptic();
+        showToast({
+          message: error.message || 'Failed to add item to cart',
+          type: 'error',
+          duration: 3000,
+        });
+      });
+  }, [countrySelected, selectedCountry, isAuthenticated, country, addItem, navigation, t, showToast]);
 
   const handleCountrySelect = async (selectedCountry: Country) => {
     await setSelectedCountry(selectedCountry);
   };
 
   // Memoized render item
-  const renderProductItem = React.useCallback(({ item, index }: { item: any; index: number }) => (
-    <AnimatedView animation="fade" delay={index * 50} className="flex-1 m-2">
-      <ProductCard
-        product={item}
-        country={country}
-        onPress={() => handleProductPress(item.id)}
-        onAddToCart={() => handleAddToCart(item)}
-        index={index}
-      />
-    </AnimatedView>
-  ), [country, handleProductPress, handleAddToCart]);
+  const renderProductItem = React.useCallback(({ item, index }: { item: any; index: number }) => {
+    const cardStyle: any = numColumns > 1 
+      ? { flex: 1, margin: 8 } // Grid layout
+      : { flex: 1, marginBottom: 16 }; // Single column layout
+    
+    return (
+      <AnimatedView animation="fade" delay={index * 50} style={cardStyle}>
+        <ProductCard
+          product={item}
+          country={country}
+          onPress={() => handleProductPress(item.id)}
+          onAddToCart={() => handleAddToCart(item)}
+          index={index}
+        />
+      </AnimatedView>
+    );
+  }, [country, handleProductPress, handleAddToCart, numColumns]);
 
   // Memoized key extractor
   const keyExtractor = React.useCallback((item: any) => item.id, []);
@@ -213,9 +231,13 @@ const HomeScreen = () => {
             className="px-6 pt-16 pb-8"
           >
             <View className="items-center">
-              {/* Logo/Icon Section */}
+              {/* Logo Section */}
               <View className="w-20 h-20 rounded-full bg-white/20 justify-center items-center mb-4">
-                <Icon name="fish" size={40} color="white" />
+                <Image 
+                  source={ASSETS.logo} 
+                  style={{ width: 60, height: 60 }}
+                  resizeMode="contain"
+                />
               </View>
               
               <Text className="text-3xl font-bold text-white mb-2 text-center">
@@ -416,6 +438,43 @@ const HomeScreen = () => {
         </AnimatedView>
       )}
 
+      {/* Recently Viewed Products */}
+      {!searchQuery && selectedCategory === 'all' && isAuthenticated && (
+        <AnimatedView animation="fade" delay={400}>
+          <RecentlyViewedProducts
+            products={products}
+            country={country}
+            onProductPress={handleProductPress}
+            limit={10}
+          />
+        </AnimatedView>
+      )}
+
+      {/* Product Recommendations */}
+      {!searchQuery && selectedCategory === 'all' && isAuthenticated && (
+        <AnimatedView animation="fade" delay={500}>
+          <ProductRecommendations
+            userId={user?.id}
+            country={country}
+            onProductPress={handleProductPress}
+            onAddToCart={handleAddToCart}
+            limit={5}
+          />
+        </AnimatedView>
+      )}
+
+      {/* Trending Products */}
+      {!searchQuery && selectedCategory === 'all' && (
+        <AnimatedView animation="fade" delay={600}>
+          <TrendingProducts
+            products={products}
+            country={country}
+            onProductPress={handleProductPress}
+            limit={10}
+          />
+        </AnimatedView>
+      )}
+
       {/* All Products Header */}
       <View className="px-4 pt-4 pb-2">
         <View className="flex-row items-center justify-between">
@@ -458,6 +517,11 @@ const HomeScreen = () => {
             icon="store-off"
             title={t('products.noProductsFound') || 'No products found'}
             message="Try adjusting your search or filters"
+            suggestions={[
+              'Clear your search to see all products',
+              'Try different filter options',
+              'Check back later for new products',
+            ]}
           />
         </View>
       ) : (
@@ -468,7 +532,8 @@ const HomeScreen = () => {
           numColumns={numColumns}
           renderItem={renderProductItem}
           ListHeaderComponent={renderHeader}
-          contentContainerStyle={{ paddingBottom: 16 }}
+          contentContainerStyle={{ paddingBottom: 16, paddingHorizontal: numColumns > 1 ? 0 : 16 }}
+          columnWrapperStyle={numColumns > 1 ? { paddingHorizontal: 8 } : undefined}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
           }
@@ -479,8 +544,8 @@ const HomeScreen = () => {
           initialNumToRender={10}
           windowSize={10}
           getItemLayout={numColumns > 1 ? (data, index) => ({
-            length: 250, // Approximate item height
-            offset: 250 * Math.floor(index / numColumns),
+            length: 400, // Updated to match minHeight in ProductCard (380 + margins)
+            offset: 400 * Math.floor(index / numColumns),
             index,
           }) : undefined}
         />

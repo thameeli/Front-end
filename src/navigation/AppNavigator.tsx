@@ -37,6 +37,7 @@ import SettingsScreen from '../screens/customer/SettingsScreen';
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
 import AdminProductsScreen from '../screens/admin/AdminProductsScreen';
 import AdminOrdersScreen from '../screens/admin/AdminOrdersScreen';
+import AdminDeliveryScreen from '../screens/admin/AdminDeliveryScreen';
 import AdminPickupPointsScreen from '../screens/admin/AdminPickupPointsScreen';
 import AdminSettingsScreen from '../screens/admin/AdminSettingsScreen';
 import AddProductScreen from '../screens/admin/AddProductScreen';
@@ -264,6 +265,21 @@ const AdminTabs = () => {
         }}
       />
       <Tab.Screen
+        name="Delivery"
+        component={AdminDeliveryScreen}
+        options={{
+          title: 'Delivery',
+          tabBarLabel: 'Delivery',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Icon
+              name={focused ? 'truck-delivery' : 'truck-delivery-outline'}
+              size={24}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tab.Screen
         name="PickupPoints"
         component={AdminPickupPointsScreen}
         options={{
@@ -339,22 +355,8 @@ const AppNavigator = () => {
     );
   }
 
-  // Show onboarding for first-time users (only if country is already selected)
-  if (!hasCompletedOnboarding && !isAuthenticated) {
-    return (
-      <NavigationContainer ref={navigationRef}>
-        <Stack.Navigator screenOptions={screenOptions}>
-          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-          <Stack.Screen name="Welcome" component={WelcomeScreen} />
-          <Stack.Screen name="CountrySelection" component={CountrySelectionScreen} />
-          <Stack.Screen name="Main" component={GuestTabs} />
-          <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Register" component={RegisterScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    );
-  }
+  // Skip onboarding - go straight to Guest Home after country selection
+  // Users can browse as guests and will be prompted to login/register when needed
 
   // Use a key to force re-render when auth state changes
   // Normalize role to lowercase for comparison
@@ -379,7 +381,11 @@ const AppNavigator = () => {
 
   return (
     <NavigationContainer ref={navigationRef}>
-      <Stack.Navigator key={navigatorKey} screenOptions={screenOptions}>
+      <Stack.Navigator 
+        key={navigatorKey} 
+        screenOptions={screenOptions}
+        initialRouteName={!isAuthenticated ? "Main" : undefined}
+      >
         {!isAuthenticated ? (
           <>
             <Stack.Screen name="Main" component={GuestTabs} />

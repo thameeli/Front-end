@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { View, Text, StyleSheet, TextInput } from 'react-native';
 import Input from './Input';
+import AddressAutocomplete from './AddressAutocomplete';
 import { formatPhoneNumber, validatePostalCode } from '../utils/regionalFormatting';
 import { COUNTRIES } from '../constants';
 import type { Country } from '../constants';
@@ -75,18 +76,26 @@ const DeliveryAddressForm: React.FC<DeliveryAddressFormProps> = ({
         Delivery Address
       </Text>
 
-      <Input
-        label="Street Address"
-        placeholder="Enter street address"
-        value={street}
-        onChangeText={onStreetChange}
-        error={errors.street}
-        autoCapitalize="words"
-        returnKeyType="next"
-        onSubmitEditing={() => cityRef.current?.focus()}
-        accessibilityLabel="Street address input"
-        accessibilityHint="Enter your street address"
-      />
+      <View style={{ marginBottom: 8 }}>
+        <Text style={[styles.label, { color: '#666', fontSize: 14, marginBottom: 8 }]}>
+          Street Address
+        </Text>
+        <AddressAutocomplete
+          value={street}
+          onChangeText={onStreetChange}
+          onSelectSuggestion={(suggestion) => {
+            onStreetChange(suggestion.address);
+            onCityChange(suggestion.city);
+            onPostalCodeChange(suggestion.postalCode);
+          }}
+          placeholder="Enter street address"
+        />
+      </View>
+      {errors.street && (
+        <Text style={{ color: '#F44336', fontSize: 12, marginTop: -8, marginBottom: 8 }}>
+          {errors.street}
+        </Text>
+      )}
 
       <View style={styles.row}>
         <View style={styles.halfWidth}>

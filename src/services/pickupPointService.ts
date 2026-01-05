@@ -1,5 +1,6 @@
 // Lazy import Supabase to avoid initialization during module load
 import { PickupPoint } from '../types';
+import { withTimeout, DEFAULT_TIMEOUTS } from '../utils/requestTimeout';
 
 // Import Supabase lazily - only when needed
 function getSupabase() {
@@ -23,7 +24,13 @@ export const pickupPointService = {
         query = query.eq('country', country);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await withTimeout(
+        query,
+        {
+          timeout: DEFAULT_TIMEOUTS.MEDIUM,
+          errorMessage: 'Failed to fetch pickup points: request timed out',
+        }
+      );
 
       if (error) {
         throw error;
@@ -42,11 +49,17 @@ export const pickupPointService = {
   async getPickupPointById(pickupPointId: string): Promise<PickupPoint | null> {
     try {
       const supabase = getSupabase();
-      const { data, error } = await supabase
-        .from('pickup_points')
-        .select('*')
-        .eq('id', pickupPointId)
-        .single();
+      const { data, error } = await withTimeout(
+        supabase
+          .from('pickup_points')
+          .select('*')
+          .eq('id', pickupPointId)
+          .single(),
+        {
+          timeout: DEFAULT_TIMEOUTS.MEDIUM,
+          errorMessage: 'Failed to fetch pickup point: request timed out',
+        }
+      );
 
       if (error) {
         throw error;

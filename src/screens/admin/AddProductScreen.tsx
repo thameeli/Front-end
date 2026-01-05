@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
@@ -21,20 +21,29 @@ const getImagePicker = async () => {
 
 type AddProductScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AddProduct'>;
 
+const STEPS = [
+  { id: 1, title: 'Basic Info', icon: 'information' },
+  { id: 2, title: 'Pricing', icon: 'currency-usd' },
+  { id: 3, title: 'Stock & Review', icon: 'check-circle' },
+] as const;
+
 const AddProductScreen = () => {
   const navigation = useNavigation<AddProductScreenNavigationProp>();
   const queryClient = useQueryClient();
   const padding = getResponsivePadding();
 
+  const [currentStep, setCurrentStep] = useState(1);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<ProductCategory>('fresh');
   const [priceGermany, setPriceGermany] = useState('');
   const [priceDenmark, setPriceDenmark] = useState('');
-  const [stock, setStock] = useState('');
+  const [stockGermany, setStockGermany] = useState('');
+  const [stockDenmark, setStockDenmark] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const createMutation = useMutation({
     mutationFn: async (productData: any) => {
@@ -43,13 +52,17 @@ const AddProductScreen = () => {
       // Upload image if selected
       if (imageUri) {
         setUploading(true);
+        setUploadProgress(0);
         try {
-          imageUrl = await productService.uploadProductImage(imageUri);
+          imageUrl = await productService.uploadProductImage(imageUri, (progress) => {
+            setUploadProgress(progress);
+          });
         } catch (error) {
           console.error('Image upload error:', error);
           // Continue without image if upload fails
         } finally {
           setUploading(false);
+          setUploadProgress(0);
         }
       }
 
@@ -58,14 +71,50 @@ const AddProductScreen = () => {
         image_url: imageUrl,
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
+    onMutate: async (newProductData) => {
+      // Cancel any outgoing refetches to avoid overwriting optimistic update
+      await queryClient.cancelQueries({ queryKey: ['products'] });
+
+      // Snapshot the previous value
+      const previousProducts = queryClient.getQueryData(['products']);
+
+      // Generate temporary ID for optimistic product
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+      // Optimistically add new product to the list
+      queryClient.setQueryData(['products'], (old: any[] = []) => [
+        {
+          ...newProductData,
+          id: tempId,
+          created_at: new Date().toISOString(),
+        },
+        ...old,
+      ]);
+
+      // Return context with previous value and temp ID for rollback/replacement
+      return { previousProducts, tempId };
+    },
+    onSuccess: (data, variables, context) => {
+      // Replace temporary product with real one from server
+      queryClient.setQueryData(['products'], (old: any[] = []) => {
+        if (!old) return [data];
+        return old.map((p) => (p.id === context?.tempId ? data : p));
+      });
+
       Alert.alert('Success', 'Product created successfully', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     },
-    onError: (error: any) => {
+    onError: (error: any, variables, context) => {
+      // Rollback to previous value on error
+      if (context?.previousProducts) {
+        queryClient.setQueryData(['products'], context.previousProducts);
+      }
       Alert.alert('Error', error.message || 'Failed to create product');
+    },
+    onSettled: () => {
+      // Always refetch after mutation to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ['products'] });
     },
   });
 
@@ -93,26 +142,49 @@ const AddProductScreen = () => {
     }
   };
 
-  const handleSubmit = () => {
+  const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!name.trim()) newErrors.name = 'Product name is required';
-    if (!priceGermany || isNaN(parseFloat(priceGermany)) || parseFloat(priceGermany) <= 0) {
-      newErrors.priceGermany = 'Valid Germany price is required';
-    }
-    if (!priceDenmark || isNaN(parseFloat(priceDenmark)) || parseFloat(priceDenmark) <= 0) {
-      newErrors.priceDenmark = 'Valid Denmark price is required';
-    }
-    if (!stock || isNaN(parseInt(stock)) || parseInt(stock) < 0) {
-      newErrors.stock = 'Valid stock quantity is required';
+    if (step === 1) {
+      if (!name.trim()) newErrors.name = 'Product name is required';
+    } else if (step === 2) {
+      if (!priceGermany || isNaN(parseFloat(priceGermany)) || parseFloat(priceGermany) <= 0) {
+        newErrors.priceGermany = 'Valid Germany price is required';
+      }
+      if (!priceDenmark || isNaN(parseFloat(priceDenmark)) || parseFloat(priceDenmark) <= 0) {
+        newErrors.priceDenmark = 'Valid Denmark price is required';
+      }
+    } else if (step === 3) {
+      if (!stockGermany || isNaN(parseInt(stockGermany)) || parseInt(stockGermany) < 0) {
+        newErrors.stockGermany = 'Valid Germany stock quantity is required';
+      }
+      if (!stockDenmark || isNaN(parseInt(stockDenmark)) || parseInt(stockDenmark) < 0) {
+        newErrors.stockDenmark = 'Valid Denmark stock quantity is required';
+      }
     }
 
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleNext = () => {
+    if (validateStep(currentStep)) {
+      if (currentStep < 3) {
+        setCurrentStep(currentStep + 1);
+      }
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleSubmit = () => {
+    if (!validateStep(3)) {
       return;
     }
-
-    setErrors({});
 
     createMutation.mutate({
       name: name.trim(),
@@ -120,152 +192,426 @@ const AddProductScreen = () => {
       category,
       price_germany: parseFloat(priceGermany),
       price_denmark: parseFloat(priceDenmark),
-      stock: parseInt(stock),
+      stock_germany: parseInt(stockGermany),
+      stock_denmark: parseInt(stockDenmark),
       active: true,
     });
+  };
+
+  const renderStepIndicator = () => {
+    return (
+      <View style={styles.stepIndicator}>
+        {STEPS.map((step, index) => (
+          <React.Fragment key={step.id}>
+            <View style={styles.stepItem}>
+              <View
+                style={[
+                  styles.stepCircle,
+                  currentStep >= step.id && styles.stepCircleActive,
+                ]}
+              >
+                {currentStep > step.id ? (
+                  <Icon name="check" size={16} color={colors.white} />
+                ) : (
+                  <Text style={[styles.stepNumber, currentStep >= step.id && styles.stepNumberActive]}>
+                    {step.id}
+                  </Text>
+                )}
+              </View>
+              <Text
+                style={[
+                  styles.stepTitle,
+                  currentStep >= step.id && styles.stepTitleActive,
+                ]}
+                numberOfLines={1}
+              >
+                {step.title}
+              </Text>
+            </View>
+            {index < STEPS.length - 1 && (
+              <View
+                style={[
+                  styles.stepLine,
+                  currentStep > step.id && styles.stepLineActive,
+                ]}
+              />
+            )}
+          </React.Fragment>
+        ))}
+      </View>
+    );
+  };
+
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <View style={styles.stepContent}>
+            <Text style={styles.stepHeader}>Basic Information</Text>
+            <Text style={styles.stepDescription}>
+              Enter the product name, image, and description
+            </Text>
+
+            <Input
+              label="Product Name *"
+              placeholder="Enter product name"
+              value={name}
+              onChangeText={(text) => {
+                setName(text);
+                if (errors.name) setErrors({ ...errors, name: '' });
+              }}
+              error={errors.name}
+              containerStyle={styles.inputContainer}
+            />
+
+            <View style={styles.imageSection}>
+              <Text style={styles.label}>Product Image (Optional)</Text>
+              <TouchableOpacity 
+                style={styles.imageButton} 
+                onPress={handlePickImage}
+                disabled={uploading}
+              >
+                {uploading ? (
+                  <View style={styles.imagePreview}>
+                    <Icon name="upload" size={24} color={colors.primary[500]} />
+                    <Text style={styles.imagePreviewText}>Uploading... {uploadProgress}%</Text>
+                    <View style={styles.progressBarContainer}>
+                      <View 
+                        style={[
+                          styles.progressBar,
+                          { width: `${uploadProgress}%` }
+                        ]} 
+                      />
+                    </View>
+                  </View>
+                ) : imageUri ? (
+                  <View style={styles.imagePreview}>
+                    <Icon name="check-circle" size={24} color={colors.success[500]} />
+                    <Text style={styles.imagePreviewText}>Image selected</Text>
+                    <TouchableOpacity
+                      style={styles.removeImageButton}
+                      onPress={() => setImageUri(null)}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Icon name="close-circle" size={20} color={colors.error[500]} />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.imagePlaceholder}>
+                    <Icon name="image-plus" size={32} color={colors.primary[500]} />
+                    <Text style={styles.imagePlaceholderText}>Tap to Select Image</Text>
+                    <Text style={styles.imageHintText}>Recommended: 4:3 aspect ratio</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <Input
+              label="Description"
+              placeholder="Enter product description (optional)"
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              numberOfLines={4}
+              style={styles.textArea}
+              containerStyle={styles.inputContainer}
+            />
+          </View>
+        );
+
+      case 2:
+        return (
+          <View style={styles.stepContent}>
+            <Text style={styles.stepHeader}>Category & Pricing</Text>
+            <Text style={styles.stepDescription}>
+              Select category and set prices for both countries
+            </Text>
+
+            <View style={styles.categorySection}>
+              <Text style={styles.label}>Category *</Text>
+              <View style={styles.categoryButtons}>
+                <TouchableOpacity
+                  style={[styles.categoryButton, category === PRODUCT_CATEGORIES.FRESH && styles.categoryButtonActive]}
+                  onPress={() => setCategory(PRODUCT_CATEGORIES.FRESH)}
+                >
+                  <Text style={[styles.categoryButtonText, category === PRODUCT_CATEGORIES.FRESH && styles.categoryButtonTextActive]}>
+                    Fresh
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.categoryButton, category === PRODUCT_CATEGORIES.FROZEN && styles.categoryButtonActive]}
+                  onPress={() => setCategory(PRODUCT_CATEGORIES.FROZEN)}
+                >
+                  <Text style={[styles.categoryButtonText, category === PRODUCT_CATEGORIES.FROZEN && styles.categoryButtonTextActive]}>
+                    Frozen
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.priceRow}>
+              <View style={styles.halfWidth}>
+                <Input
+                  label="Price (Germany) *"
+                  placeholder="0.00"
+                  value={priceGermany}
+                  onChangeText={(text) => {
+                    setPriceGermany(text);
+                    if (errors.priceGermany) setErrors({ ...errors, priceGermany: '' });
+                  }}
+                  keyboardType="decimal-pad"
+                  error={errors.priceGermany}
+                  containerStyle={styles.inputContainer}
+                />
+              </View>
+              <View style={styles.halfWidth}>
+                <Input
+                  label="Price (Denmark) *"
+                  placeholder="0.00"
+                  value={priceDenmark}
+                  onChangeText={(text) => {
+                    setPriceDenmark(text);
+                    if (errors.priceDenmark) setErrors({ ...errors, priceDenmark: '' });
+                  }}
+                  keyboardType="decimal-pad"
+                  error={errors.priceDenmark}
+                  containerStyle={styles.inputContainer}
+                />
+              </View>
+            </View>
+          </View>
+        );
+
+      case 3:
+        return (
+          <View style={styles.stepContent}>
+            <Text style={styles.stepHeader}>Stock & Review</Text>
+            <Text style={styles.stepDescription}>
+              Set stock quantities for both countries and review your product details
+            </Text>
+
+            <View style={styles.priceRow}>
+              <View style={styles.halfWidth}>
+                <Input
+                  label="Stock (Germany) *"
+                  placeholder="0"
+                  value={stockGermany}
+                  onChangeText={(text) => {
+                    setStockGermany(text);
+                    if (errors.stockGermany) setErrors({ ...errors, stockGermany: '' });
+                  }}
+                  keyboardType="number-pad"
+                  error={errors.stockGermany}
+                  containerStyle={styles.inputContainer}
+                />
+              </View>
+              <View style={styles.halfWidth}>
+                <Input
+                  label="Stock (Denmark) *"
+                  placeholder="0"
+                  value={stockDenmark}
+                  onChangeText={(text) => {
+                    setStockDenmark(text);
+                    if (errors.stockDenmark) setErrors({ ...errors, stockDenmark: '' });
+                  }}
+                  keyboardType="number-pad"
+                  error={errors.stockDenmark}
+                  containerStyle={styles.inputContainer}
+                />
+              </View>
+            </View>
+
+            {/* Review Section */}
+            <View style={styles.reviewSection}>
+              <Text style={styles.reviewTitle}>Product Summary</Text>
+              <View style={styles.reviewCard}>
+                <View style={styles.reviewRow}>
+                  <Text style={styles.reviewLabel}>Name:</Text>
+                  <Text style={styles.reviewValue}>{name || 'Not set'}</Text>
+                </View>
+                <View style={styles.reviewRow}>
+                  <Text style={styles.reviewLabel}>Category:</Text>
+                  <Text style={styles.reviewValue}>{category === 'fresh' ? 'Fresh' : 'Frozen'}</Text>
+                </View>
+                <View style={styles.reviewRow}>
+                  <Text style={styles.reviewLabel}>Price (Germany):</Text>
+                  <Text style={styles.reviewValue}>
+                    {priceGermany ? `€${parseFloat(priceGermany).toFixed(2)}` : 'Not set'}
+                  </Text>
+                </View>
+                <View style={styles.reviewRow}>
+                  <Text style={styles.reviewLabel}>Price (Denmark):</Text>
+                  <Text style={styles.reviewValue}>
+                    {priceDenmark ? `kr ${parseFloat(priceDenmark).toFixed(2)}` : 'Not set'}
+                  </Text>
+                </View>
+                <View style={styles.reviewRow}>
+                  <Text style={styles.reviewLabel}>Stock (Germany):</Text>
+                  <Text style={styles.reviewValue}>{stockGermany || 'Not set'}</Text>
+                </View>
+                <View style={styles.reviewRow}>
+                  <Text style={styles.reviewLabel}>Stock (Denmark):</Text>
+                  <Text style={styles.reviewValue}>{stockDenmark || 'Not set'}</Text>
+                </View>
+                <View style={styles.reviewRow}>
+                  <Text style={styles.reviewLabel}>Image:</Text>
+                  <Text style={styles.reviewValue}>{imageUri ? 'Selected ✓' : 'Not selected'}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        );
+
+      default:
+        return null;
+    }
   };
 
   return (
     <View style={glassmorphism.screenBackground}>
       <AppHeader title="Add Product" showBack />
+      
       <ScrollView 
         style={styles.content}
         contentContainerStyle={{ 
-          padding: padding.vertical,
-          maxWidth: isTablet ? 600 : '100%',
-          alignSelf: isTablet ? 'center' : 'stretch',
+          paddingBottom: padding.vertical * 2,
         }}
+        showsVerticalScrollIndicator={false}
       >
-        {Object.keys(errors).length > 0 && (
-          <ErrorMessage
-            message="Please fix the errors below"
-            type="error"
-            style={styles.errorMessage}
-          />
-        )}
-
-        <Input
-          label="Product Name *"
-          placeholder="Enter product name"
-          value={name}
-          onChangeText={(text) => {
-            setName(text);
-            if (errors.name) setErrors({ ...errors, name: '' });
-          }}
-          error={errors.name}
-        />
-
-        <Input
-          label="Description"
-          placeholder="Enter product description (optional)"
-          value={description}
-          onChangeText={setDescription}
-          multiline
-          numberOfLines={3}
-          style={styles.textArea}
-        />
-
-        <View style={styles.categorySection}>
-          <Text style={styles.label}>Category *</Text>
-          <View style={styles.categoryButtons}>
-            <TouchableOpacity
-              style={[styles.categoryButton, category === PRODUCT_CATEGORIES.FRESH && styles.categoryButtonActive]}
-              onPress={() => setCategory(PRODUCT_CATEGORIES.FRESH)}
-            >
-              <Text style={[styles.categoryButtonText, category === PRODUCT_CATEGORIES.FRESH && styles.categoryButtonTextActive]}>
-                Fresh
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.categoryButton, category === PRODUCT_CATEGORIES.FROZEN && styles.categoryButtonActive]}
-              onPress={() => setCategory(PRODUCT_CATEGORIES.FROZEN)}
-            >
-              <Text style={[styles.categoryButtonText, category === PRODUCT_CATEGORIES.FROZEN && styles.categoryButtonTextActive]}>
-                Frozen
-              </Text>
-            </TouchableOpacity>
-          </View>
+        {/* Step Indicator */}
+        <View style={[styles.stepIndicatorContainer, { paddingHorizontal: padding.horizontal, paddingTop: padding.vertical }]}>
+          {renderStepIndicator()}
         </View>
 
-        <View style={styles.priceRow}>
-          <View style={styles.halfWidth}>
-            <Input
-              label="Price (Germany) *"
-              placeholder="0.00"
-              value={priceGermany}
-              onChangeText={(text) => {
-                setPriceGermany(text);
-                if (errors.priceGermany) setErrors({ ...errors, priceGermany: '' });
-              }}
-              keyboardType="decimal-pad"
-              error={errors.priceGermany}
+        {/* Step Content */}
+        <View style={[styles.contentContainer, { paddingHorizontal: padding.horizontal }]}>
+          {Object.keys(errors).length > 0 && (
+            <ErrorMessage
+              message="Please fix the errors below"
+              type="error"
+              style={styles.errorMessage}
             />
-          </View>
-          <View style={styles.halfWidth}>
-            <Input
-              label="Price (Denmark) *"
-              placeholder="0.00"
-              value={priceDenmark}
-              onChangeText={(text) => {
-                setPriceDenmark(text);
-                if (errors.priceDenmark) setErrors({ ...errors, priceDenmark: '' });
-              }}
-              keyboardType="decimal-pad"
-              error={errors.priceDenmark}
-            />
-          </View>
+          )}
+
+          {renderStepContent()}
         </View>
-
-        <Input
-          label="Stock Quantity *"
-          placeholder="0"
-          value={stock}
-          onChangeText={(text) => {
-            setStock(text);
-            if (errors.stock) setErrors({ ...errors, stock: '' });
-          }}
-          keyboardType="number-pad"
-          error={errors.stock}
-        />
-
-        <View style={styles.imageSection}>
-          <Text style={styles.label}>Product Image</Text>
-          <TouchableOpacity style={styles.imageButton} onPress={handlePickImage}>
-            {imageUri ? (
-              <View style={styles.imagePreview}>
-                <Text style={styles.imagePreviewText}>Image selected</Text>
-                <Icon name="check-circle" size={24} color="#34C759" />
-              </View>
-            ) : (
-              <View style={styles.imagePlaceholder}>
-                <Icon name="image-plus" size={32} color="#007AFF" />
-                <Text style={styles.imagePlaceholderText}>Select Image</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        <Button
-          title="Create Product"
-          onPress={handleSubmit}
-          loading={createMutation.isPending || uploading}
-          disabled={createMutation.isPending || uploading}
-          fullWidth
-          style={styles.submitButton}
-        />
       </ScrollView>
+
+      {/* Navigation Buttons */}
+      <View style={[styles.navigationContainer, { paddingHorizontal: padding.horizontal, paddingBottom: padding.vertical }]}>
+        <View style={styles.navigationButtons}>
+          {currentStep > 1 && (
+            <Button
+              title="Back"
+              onPress={handleBack}
+              variant="outline"
+              style={styles.backButton}
+            />
+          )}
+          <View style={{ flex: 1 }} />
+          {currentStep < 3 ? (
+            <Button
+              title="Next"
+              onPress={handleNext}
+              style={styles.nextButton}
+            />
+          ) : (
+            <Button
+              title="Create Product"
+              onPress={handleSubmit}
+              loading={createMutation.isPending || uploading}
+              disabled={createMutation.isPending || uploading}
+              style={styles.submitButton}
+            />
+          )}
+        </View>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   content: {
     flex: 1,
   },
+  stepIndicatorContainer: {
+    marginBottom: 24,
+  },
+  stepIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepItem: {
+    alignItems: 'center',
+    minWidth: 80,
+  },
+  stepCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.neutral[200],
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.neutral[300],
+  },
+  stepCircleActive: {
+    backgroundColor: colors.primary[500],
+    borderColor: colors.primary[500],
+  },
+  stepNumber: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.neutral[600],
+  },
+  stepNumberActive: {
+    color: colors.white,
+  },
+  stepTitle: {
+    marginTop: 8,
+    fontSize: 12,
+    color: colors.neutral[600],
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  stepTitleActive: {
+    color: colors.primary[500],
+    fontWeight: '600',
+  },
+  stepLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: colors.neutral[300],
+    marginHorizontal: 8,
+    maxWidth: 60,
+  },
+  stepLineActive: {
+    backgroundColor: colors.primary[500],
+  },
+  contentContainer: {
+    flex: 1,
+    maxWidth: isTablet ? 600 : '100%',
+    alignSelf: isTablet ? 'center' : 'stretch',
+  },
+  stepContent: {
+    flex: 1,
+  },
+  stepHeader: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.neutral[900],
+    marginBottom: 8,
+  },
+  stepDescription: {
+    fontSize: 14,
+    color: colors.neutral[600],
+    marginBottom: 24,
+  },
   errorMessage: {
+    marginBottom: 16,
+  },
+  inputContainer: {
     marginBottom: 16,
   },
   categorySection: {
@@ -274,7 +620,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000',
+    color: colors.neutral[900],
     marginBottom: 8,
   },
   categoryButtons: {
@@ -289,6 +635,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(58, 181, 209, 0.2)',
     backgroundColor: 'rgba(255, 255, 255, 0.7)',
     alignItems: 'center',
+    ...glassmorphism.panel,
   },
   categoryButtonActive: {
     borderColor: colors.primary[500],
@@ -312,7 +659,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   textArea: {
-    minHeight: 80,
+    minHeight: 100,
   },
   imageSection: {
     marginBottom: 16,
@@ -335,7 +682,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 14,
     color: colors.primary[500],
-    fontWeight: '500',
+    fontWeight: '600',
+  },
+  imageHintText: {
+    marginTop: 4,
+    fontSize: 12,
+    color: colors.neutral[500],
+    fontWeight: '400',
   },
   imagePreview: {
     height: 150,
@@ -347,6 +700,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 8,
+    position: 'relative',
     ...glassmorphism.panel,
   },
   imagePreviewText: {
@@ -354,11 +708,83 @@ const styles = StyleSheet.create({
     color: colors.success[600],
     fontWeight: '600',
   },
-  submitButton: {
+  removeImageButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 12,
+    padding: 4,
+  },
+  progressBarContainer: {
+    width: '80%',
+    height: 4,
+    backgroundColor: colors.neutral[200],
+    borderRadius: 2,
     marginTop: 8,
-    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: colors.primary[500],
+    borderRadius: 2,
+  },
+  reviewSection: {
+    marginTop: 24,
+  },
+  reviewTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.neutral[900],
+    marginBottom: 12,
+  },
+  reviewCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 12,
+    padding: 16,
+    ...glassmorphism.panel,
+  },
+  reviewRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(58, 181, 209, 0.1)',
+  },
+  reviewLabel: {
+    fontSize: 14,
+    color: colors.neutral[600],
+    fontWeight: '500',
+  },
+  reviewValue: {
+    fontSize: 14,
+    color: colors.neutral[900],
+    fontWeight: '600',
+    flex: 1,
+    textAlign: 'right',
+  },
+  navigationContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(58, 181, 209, 0.2)',
+    paddingTop: 16,
+    ...glassmorphism.panel,
+  },
+  navigationButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  backButton: {
+    minWidth: 100,
+  },
+  nextButton: {
+    minWidth: 100,
+  },
+  submitButton: {
+    minWidth: 150,
   },
 });
 
 export default AddProductScreen;
-

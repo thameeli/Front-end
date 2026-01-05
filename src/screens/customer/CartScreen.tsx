@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, Alert, TouchableOpacity, StyleSheet, Platform, Dimensions } from 'react-native';
+import { View, Text, ScrollView, Alert, TouchableOpacity, StyleSheet, Platform, Dimensions, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
@@ -14,9 +14,12 @@ import { RootStackParamList } from '../../types';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
 import { useProducts } from '../../hooks/useProducts';
-import { CartItem, AppHeader, Button, EmptyState, LoadingScreen, ErrorMessage, AnimatedView, Card } from '../../components';
+import { SwipeableCartItem, AppHeader, Button, EmptyState, LoadingScreen, ErrorMessage, AnimatedView, Card, useToast } from '../../components';
+import { successHaptic, errorHaptic, warningHaptic } from '../../utils/hapticFeedback';
+import { useSavedForLaterStore } from '../../store/savedForLaterStore';
 import { formatCartSummary } from '../../utils/cartUtils';
 import { validateCart, updateCartWithProductData } from '../../utils/cartValidation';
+import { getProductStock } from '../../utils/productUtils';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
 import { colors } from '../../theme';
@@ -35,6 +38,7 @@ const CartScreen = () => {
   const { t } = useTranslation();
   const { user, isAuthenticated } = useAuthStore();
   const { selectedCountry } = useCartStore();
+  const { showToast } = useToast();
   const insets = useSafeAreaInsets();
   
   // Use user's country preference if authenticated, otherwise use selected country from cart store
@@ -98,21 +102,29 @@ const CartScreen = () => {
     return formatCartSummary(items, country, null, false);
   }, [items, country]);
 
-  const handleQuantityChange = (productId: string, newQuantity: number) => {
+  const handleQuantityChange = async (productId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
-      removeItem(productId);
+      await removeItem(productId);
     } else {
       const item = items.find((i) => i.product.id === productId);
       if (item) {
-        const maxQuantity = item.product.stock;
+        const maxQuantity = getProductStock(item.product, item.selectedCountry);
         if (newQuantity > maxQuantity) {
-          Alert.alert(
-            'Stock Limit',
-            `Only ${maxQuantity} available for ${item.product.name}`
-          );
-          updateQuantity(productId, maxQuantity);
+          warningHaptic();
+          showToast({
+            message: `Only ${maxQuantity} available for ${item.product.name}`,
+            type: 'warning',
+            duration: 3000,
+          });
+          await updateQuantity(productId, maxQuantity);
         } else {
-          updateQuantity(productId, newQuantity);
+          await updateQuantity(productId, newQuantity);
+          successHaptic();
+          showToast({
+            message: 'Quantity updated',
+            type: 'success',
+            duration: 2000,
+          });
         }
       }
     }
@@ -128,7 +140,25 @@ const CartScreen = () => {
         {
           text: 'Remove',
           style: 'destructive',
-          onPress: () => removeItem(productId),
+          onPress: async () => {
+            try {
+              await removeItem(productId);
+              successHaptic();
+              showToast({
+                message: `${item?.product.name} removed from cart`,
+                type: 'success',
+                duration: 2000,
+              });
+            } catch (error) {
+              console.error('Error removing item:', error);
+              errorHaptic();
+              showToast({
+                message: 'Failed to remove item from cart',
+                type: 'error',
+                duration: 3000,
+              });
+            }
+          },
         },
       ]
     );
@@ -184,6 +214,11 @@ const CartScreen = () => {
           message="Add some products to get started!"
           actionLabel="Continue Shopping"
           onAction={() => navigation.navigate('Products')}
+          suggestions={[
+            'Browse our fresh and frozen products',
+            'Check out trending items',
+            'Use search to find specific products',
+          ]}
         />
       </View>
     );
@@ -193,13 +228,52 @@ const CartScreen = () => {
     <View style={[styles.container, { backgroundColor: 'rgba(245, 245, 250, 0.95)' }]}>
       <AppHeader title="Shopping Cart" />
       
+      {/* Sticky Order Summary Header */}
+      <View style={[
+        styles.stickySummaryHeader,
+        {
+          paddingHorizontal: padding.horizontal,
+          maxWidth: isTabletDevice && !isLandscapeMode ? 600 : '100%',
+          alignSelf: isTabletDevice && !isLandscapeMode ? 'center' : 'stretch',
+        }
+      ]}>
+        <Card elevation="raised" style={styles.summaryCardSticky}>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Subtotal</Text>
+            <Text style={styles.summaryValue}>
+              {cartSummary.subtotal}
+            </Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Total</Text>
+            <Text style={styles.totalValue}>
+              {cartSummary.total}
+            </Text>
+          </View>
+        </Card>
+      </View>
+      
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: totalTabBarHeight + (isTabletDevice ? 120 : 100) }
+          { paddingTop: 80, paddingBottom: totalTabBarHeight + (isTabletDevice ? 180 : 160) }
         ]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={false}
+            onRefresh={async () => {
+              await loadCart();
+              // Refetch products to validate cart
+              if (products.length > 0) {
+                // Trigger validation
+              }
+            }}
+            tintColor={colors.primary[500]}
+            colors={[colors.primary[500]]}
+          />
+        }
       >
         <View style={[
           styles.content,
@@ -234,7 +308,7 @@ const CartScreen = () => {
                 animation="fade"
                 delay={index * 50}
               >
-                <CartItem
+                <SwipeableCartItem
                   item={item}
                   onQuantityChange={(quantity) =>
                     handleQuantityChange(item.product.id, quantity)
@@ -246,7 +320,7 @@ const CartScreen = () => {
             ))}
           </View>
 
-          {/* Order Summary */}
+          {/* Order Summary (Detailed) - Only shown in scroll view for detailed breakdown */}
           <AnimatedView animation="slide" delay={items.length * 50} enterFrom="bottom">
             <Card elevation="raised" style={styles.summaryCard}>
               <Text style={[
@@ -353,6 +427,22 @@ const styles = StyleSheet.create({
   },
   cartItemsContainer: {
     marginBottom: 16,
+  },
+  stickySummaryHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    backgroundColor: 'rgba(245, 245, 250, 0.95)',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.neutral[200],
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  summaryCardSticky: {
+    padding: 12,
+    marginBottom: 0,
   },
   summaryCard: {
     padding: 16,

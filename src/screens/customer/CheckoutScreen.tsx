@@ -4,9 +4,9 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, Alert, TouchableOpacity, StyleSheet, Platform, Linking, Dimensions } from 'react-native';
+import { View, Text, ScrollView, Alert, TouchableOpacity, StyleSheet, Platform, Linking, Dimensions, Modal, KeyboardAvoidingView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
@@ -30,11 +30,17 @@ import {
   Badge,
   EmptyState,
   TrustBadge,
+  useToast,
+  CheckoutProgressIndicator,
+  FormErrorSummary,
+  PaymentProcessingOverlay,
 } from '../../components';
 import StripePaymentButton from '../../components/StripePaymentButton';
 import { formatCartSummary, calculateDeliveryFee } from '../../utils/cartUtils';
 import { validateCheckout, CheckoutFormData } from '../../utils/checkoutValidation';
 import { validateCart } from '../../utils/cartValidation';
+import { useCheckoutAutoSave, getCheckoutData, clearCheckoutData } from '../../utils/checkoutAutoSave';
+import { successHaptic, errorHaptic, warningHaptic } from '../../utils/hapticFeedback';
 import { COUNTRIES } from '../../constants';
 import type { Country } from '../../constants';
 import { colors } from '../../theme';
@@ -57,6 +63,7 @@ const CheckoutScreen = () => {
   const { t } = useTranslation();
   const { user, isAuthenticated } = useAuthStore();
   const { items, clearCart, selectedCountry } = useCartStore();
+  const { showToast } = useToast();
   
   // Use user's country preference if authenticated, otherwise use selected country from cart store
   const country = (isAuthenticated && user?.country_preference) 
@@ -109,6 +116,37 @@ const CheckoutScreen = () => {
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [isCreatingPaymentIntent, setIsCreatingPaymentIntent] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
+  const [orderIdempotencyKey, setOrderIdempotencyKey] = useState<string | null>(null);
+
+  // Load saved checkout data on mount
+  useEffect(() => {
+    getCheckoutData().then((savedData) => {
+      if (savedData.isHomeDelivery !== undefined) {
+        setIsHomeDelivery(savedData.isHomeDelivery);
+      }
+      if (savedData.selectedPickupPointId !== undefined) {
+        setSelectedPickupPointId(savedData.selectedPickupPointId);
+      }
+      if (savedData.deliveryAddress) {
+        setDeliveryAddress(savedData.deliveryAddress);
+      }
+      if (savedData.paymentMethod) {
+        setPaymentMethod(savedData.paymentMethod as PaymentMethod);
+      }
+      if (savedData.paymentDetails) {
+        setPaymentDetails(savedData.paymentDetails);
+      }
+    });
+  }, []);
+
+  // Auto-save form data when it changes
+  useCheckoutAutoSave({
+    isHomeDelivery,
+    selectedPickupPointId,
+    deliveryAddress,
+    paymentMethod: paymentMethod || undefined,
+    paymentDetails,
+  });
 
   // Fetch pickup points
   const { data: pickupPoints = [], isLoading: loadingPickupPoints } = useQuery({
@@ -165,7 +203,12 @@ const CheckoutScreen = () => {
 
   const handleNext = () => {
     if (!canProceedToNextStep()) {
-      Alert.alert('Incomplete', 'Please complete all required fields to continue');
+      warningHaptic();
+      showToast({
+        message: 'Please complete all required fields to continue',
+        type: 'warning',
+        duration: 3000,
+      });
       return;
     }
 
@@ -230,6 +273,14 @@ const CheckoutScreen = () => {
       ? `${deliveryAddress.street}, ${deliveryAddress.city}, ${deliveryAddress.postalCode}${deliveryAddress.instructions ? ` - ${deliveryAddress.instructions}` : ''}`
       : undefined;
 
+    // Generate idempotency key if not already set (prevents duplicate orders)
+    const idempotencyKey = orderIdempotencyKey || 
+      `${user.id}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    
+    if (!orderIdempotencyKey) {
+      setOrderIdempotencyKey(idempotencyKey);
+    }
+
     const order = await orderService.createOrder({
       user_id: user.id,
       country,
@@ -238,6 +289,7 @@ const CheckoutScreen = () => {
       delivery_address: deliveryAddressString,
       delivery_fee: cartSummary.deliveryFeeValue,
       items: orderItems,
+      idempotency_key: idempotencyKey,
     });
 
     return order;
@@ -249,8 +301,14 @@ const CheckoutScreen = () => {
       return;
     }
 
+    // Prevent duplicate submissions
+    if (isProcessing || isCreatingPaymentIntent) {
+      return;
+    }
+
     try {
       setIsCreatingPaymentIntent(true);
+      setIsProcessing(true);
       
       // First create the order
       const order = await createOrder();
@@ -272,10 +330,16 @@ const CheckoutScreen = () => {
       setPaymentIntentId(paymentIntent.paymentIntentId);
     } catch (error: any) {
       console.error('Error creating payment intent:', error);
-      Alert.alert(
-        'Payment Error',
-        error.message || 'Failed to initialize payment. Please try again.'
-      );
+      errorHaptic();
+      showToast({
+        message: error.message || 'Failed to initialize payment. Please try again.',
+        type: 'error',
+        duration: 4000,
+        action: {
+          label: 'Retry',
+          onPress: () => handleCreatePaymentIntent(),
+        },
+      });
       setIsCreatingPaymentIntent(false);
     }
   };
@@ -287,15 +351,19 @@ const CheckoutScreen = () => {
         // Update order payment status
         await orderService.updatePaymentStatus(createdOrderId, 'paid');
         
-        clearCart();
+        successHaptic();
+        await clearCart();
+        await clearCheckoutData(); // Clear saved checkout data after successful order
         navigation.replace('OrderConfirmation', { orderId: createdOrderId });
       }
     } catch (error: any) {
       console.error('Error updating order after payment:', error);
-      Alert.alert(
-        'Order Update Error',
-        'Payment was successful but there was an error updating your order. Please contact support.'
-      );
+      warningHaptic();
+      showToast({
+        message: 'Payment was successful but there was an error updating your order. Please contact support.',
+        type: 'warning',
+        duration: 6000,
+      });
     } finally {
       setIsProcessing(false);
       setIsCreatingPaymentIntent(false);
@@ -304,7 +372,26 @@ const CheckoutScreen = () => {
 
   // Handle payment failure
   const handlePaymentFailure = (error: string) => {
-    Alert.alert('Payment Failed', error || 'Payment could not be processed. Please try again.');
+    errorHaptic();
+    showToast({
+      message: error || 'Payment could not be processed. Please try again.',
+      type: 'error',
+      duration: 5000,
+      action: {
+        label: 'Retry',
+        onPress: () => {
+          // Reset payment intent to allow retry
+          setPaymentIntentClientSecret(null);
+          setPaymentIntentId(null);
+          setIsProcessing(false);
+          setIsCreatingPaymentIntent(false);
+          // Retry payment intent creation
+          if (paymentMethod === 'online') {
+            handleCreatePaymentIntent();
+          }
+        },
+      },
+    });
     setIsProcessing(false);
     setIsCreatingPaymentIntent(false);
     // Reset payment intent to allow retry
@@ -314,18 +401,32 @@ const CheckoutScreen = () => {
 
   // Handle COD order placement
   const handlePlaceCODOrder = async () => {
+    // Prevent duplicate submissions
+    if (isProcessing) {
+      return;
+    }
+
     setIsProcessing(true);
     try {
       const order = await createOrder();
       // COD orders are already created with pending payment status
-      clearCart();
+      await clearCart();
+      await clearCheckoutData(); // Clear saved checkout data after successful order
       navigation.replace('OrderConfirmation', { orderId: order.id });
     } catch (error: any) {
       console.error('Error placing COD order:', error);
-      Alert.alert(
-        'Order Failed',
-        error.message || 'Failed to place order. Please try again.'
-      );
+      errorHaptic();
+      showToast({
+        message: error.message || 'Failed to place order. Please try again.',
+        type: 'error',
+        duration: 4000,
+        action: {
+          label: 'Retry',
+          onPress: () => handlePlaceCODOrder(),
+        },
+      });
+      // Reset idempotency key on error to allow retry
+      setOrderIdempotencyKey(null);
     } finally {
       setIsProcessing(false);
     }
@@ -333,6 +434,11 @@ const CheckoutScreen = () => {
 
   // Handle place order button click
   const handlePlaceOrder = async () => {
+    // Prevent duplicate submissions
+    if (isProcessing) {
+      return;
+    }
+
     if (paymentMethod === 'cod') {
       await handlePlaceCODOrder();
     } else if (paymentMethod === 'online') {
@@ -342,7 +448,11 @@ const CheckoutScreen = () => {
       } else {
         // Payment intent already created, payment should be handled by StripePaymentButton
         // This shouldn't happen, but just in case
-        Alert.alert('Payment Ready', 'Please use the payment button to complete your order.');
+        showToast({
+          message: 'Please use the payment button to complete your order.',
+          type: 'info',
+          duration: 3000,
+        });
       }
     }
   };
@@ -355,6 +465,40 @@ const CheckoutScreen = () => {
       setCreatedOrderId(null);
     }
   }, [paymentMethod]);
+
+  // Prevent navigation during payment processing
+  useFocusEffect(
+    React.useCallback(() => {
+      const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+        if (isProcessing || isCreatingPaymentIntent) {
+          // Prevent navigation during payment
+          e.preventDefault();
+          warningHaptic();
+          showToast({
+            message: 'Please wait for payment to complete',
+            type: 'warning',
+            duration: 3000,
+          });
+        }
+      });
+
+      return unsubscribe;
+    }, [navigation, isProcessing, isCreatingPaymentIntent, showToast])
+  );
+
+  // Function to handle error field navigation
+  const handleErrorFieldPress = (fieldName: string) => {
+    // Navigate to the appropriate step based on field name
+    if (['street', 'city', 'postalCode', 'phone', 'instructions'].includes(fieldName)) {
+      setCurrentStep('delivery');
+    } else if (fieldName === 'pickupPoint') {
+      setCurrentStep('delivery');
+    } else if (fieldName === 'paymentMethod') {
+      setCurrentStep('payment');
+    }
+    // Scroll to field would be handled by the form component
+    // For now, we just navigate to the step
+  };
 
   // Move to payment step when payment intent is created
   useEffect(() => {
@@ -684,11 +828,16 @@ const CheckoutScreen = () => {
                 <TouchableOpacity 
                   onPress={() => {
                     Linking.openURL('https://thamili.com/privacy-policy').catch(() => {
-                      Alert.alert('Error', 'Could not open privacy policy link');
+                      showToast({
+                        message: 'Could not open privacy policy link',
+                        type: 'error',
+                        duration: 3000,
+                      });
                     });
                   }}
                   accessibilityRole="link"
                   accessibilityLabel="View privacy policy"
+                  accessibilityHint="Opens privacy policy in browser"
                 >
                   <Text className="text-sm text-primary-500 underline">
                     Privacy Policy
@@ -697,11 +846,16 @@ const CheckoutScreen = () => {
                 <TouchableOpacity 
                   onPress={() => {
                     Linking.openURL('https://thamili.com/terms').catch(() => {
-                      Alert.alert('Error', 'Could not open terms link');
+                      showToast({
+                        message: 'Could not open terms link',
+                        type: 'error',
+                        duration: 3000,
+                      });
                     });
                   }}
                   accessibilityRole="link"
                   accessibilityLabel="View terms and conditions"
+                  accessibilityHint="Opens terms and conditions in browser"
                 >
                   <Text className="text-sm text-primary-500 underline">
                     Terms & Conditions
@@ -718,19 +872,41 @@ const CheckoutScreen = () => {
   };
 
   return (
-    <View className="flex-1 bg-neutral-50">
+    <View style={{ flex: 1, backgroundColor: colors.background.default }}>
       <AppHeader title="Checkout" showBack />
       
-      {renderStepIndicator()}
-
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ 
-          paddingBottom: totalTabBarHeight + (isTabletDevice ? 120 : 100),
-          paddingHorizontal: isTabletDevice && !isLandscapeMode ? padding.horizontal * 2 : 0,
+      <CheckoutProgressIndicator
+        currentStep={currentStep}
+        steps={steps}
+        onStepPress={(step) => {
+          const stepIndex = steps.findIndex((s) => s.key === step);
+          const currentIndex = getCurrentStepIndex();
+          // Allow going back or to completed steps
+          if (stepIndex <= currentIndex) {
+            setCurrentStep(step);
+          }
         }}
-        showsVerticalScrollIndicator={false}
+        style={{ margin: padding.horizontal, marginBottom: 16 }}
+      />
+
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ 
+            paddingBottom: totalTabBarHeight + (isTabletDevice ? 120 : 100),
+            paddingHorizontal: isTabletDevice && !isLandscapeMode ? padding.horizontal * 2 : padding.horizontal,
+            flexGrow: 1,
+          }}
+          showsVerticalScrollIndicator={true}
+          scrollEnabled={true}
+          nestedScrollEnabled={true}
+          keyboardShouldPersistTaps="handled"
+          bounces={true}
+        >
         {!cartValidation.isValid && currentStep === 'summary' && (
           <AnimatedView animation="fade" delay={0} className="px-4 pt-4">
             <ErrorMessage
@@ -740,8 +916,32 @@ const CheckoutScreen = () => {
           </AnimatedView>
         )}
 
+        {/* Form Error Summary - Show when there are validation errors */}
+        {Object.keys(validationErrors).length > 0 && (
+          <AnimatedView animation="fade" delay={0} style={{ paddingHorizontal: padding.horizontal, paddingTop: padding.vertical }}>
+            <FormErrorSummary
+              errors={validationErrors}
+              onErrorPress={handleErrorFieldPress}
+            />
+          </AnimatedView>
+        )}
+
         {renderStepContent()}
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* Payment Processing Overlay */}
+      <PaymentProcessingOverlay
+        visible={isProcessing || isCreatingPaymentIntent}
+        message={
+          isCreatingPaymentIntent
+            ? 'Initializing secure payment...'
+            : isProcessing
+            ? 'Processing your payment...'
+            : 'Processing...'
+        }
+        showCancel={false}
+      />
 
       {/* Sticky Navigation Buttons - Positioned above tab bar */}
       <AnimatedView
@@ -776,6 +976,8 @@ const CheckoutScreen = () => {
               minHeight: MIN_TOUCH_TARGET,
               marginRight: isSmall || isLandscapeMode ? 0 : 12,
             } as any}
+            accessibilityLabel="Go back to previous step"
+            accessibilityHint="Double tap to return to the previous checkout step"
           />
           {currentStep === 'review' ? (
             <Button
@@ -801,6 +1003,18 @@ const CheckoutScreen = () => {
                 width: isSmall || isLandscapeMode ? '100%' : undefined,
                 minHeight: MIN_TOUCH_TARGET,
               } as any}
+              accessibilityLabel={
+                paymentMethod === 'online' && !paymentIntentClientSecret
+                  ? `Initialize payment for ${cartSummary.total}`
+                  : paymentMethod === 'cod'
+                  ? `Place order with cash on delivery for ${cartSummary.total}`
+                  : `Place order for ${cartSummary.total}`
+              }
+              accessibilityHint={
+                isProcessing || isCreatingPaymentIntent
+                  ? 'Payment is being processed, please wait'
+                  : 'Double tap to complete your order'
+              }
             />
           ) : (
             <Button
@@ -813,6 +1027,12 @@ const CheckoutScreen = () => {
                 width: isSmall || isLandscapeMode ? '100%' : undefined,
                 minHeight: MIN_TOUCH_TARGET,
               } as any}
+              accessibilityLabel="Continue to next step"
+              accessibilityHint={
+                !canProceedToNextStep()
+                  ? 'Please complete all required fields to continue'
+                  : 'Double tap to proceed to the next checkout step'
+              }
             />
           )}
         </View>

@@ -158,8 +158,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           }
         }
         
-        // Make sure to set loading to false before returning
-        set({ isLoading: false });
+        // CRITICAL: Ensure isAuthenticated stays false on error
+        // Make sure to set loading to false and explicitly keep isAuthenticated false
+        set({ 
+          isLoading: false,
+          isAuthenticated: false, // Explicitly ensure false on error
+        });
         return { success: false, error: errorMessage };
       }
 
@@ -308,11 +312,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Fallback: use user metadata if profile fetch failed (but warn about it)
       if (!profile && user.user_metadata) {
         try {
+          // Validate country_preference - only allow 'germany' or 'denmark'
+          const countryPref = user.user_metadata.country_preference;
+          const validCountry = (countryPref === 'germany' || countryPref === 'denmark') 
+            ? countryPref 
+            : undefined; // Don't set invalid values, let it be NULL
+
           profile = {
             id: user.id,
             email: user.email,
             role: user.user_metadata.role || 'customer',
-            country_preference: user.user_metadata.country_preference || 'germany',
+            country_preference: validCountry, // NULL if invalid, which is allowed by constraint
             phone: user.user_metadata.phone || null,
             created_at: user.created_at,
             updated_at: user.updated_at,
@@ -333,13 +343,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const rawRole = profile?.role || user.user_metadata?.role || 'customer';
       const normalizedRole = typeof rawRole === 'string' ? rawRole.toLowerCase().trim() : 'customer';
 
+      // Validate country_preference - only allow 'germany' or 'denmark'
+      const getValidCountryPreference = (): 'germany' | 'denmark' | undefined => {
+        const country = profile?.country_preference || user.user_metadata?.country_preference;
+        if (country === 'germany' || country === 'denmark') {
+          return country;
+        }
+        return undefined; // Return undefined (NULL in DB) if invalid
+      };
+
       const userData: User = {
         id: user.id,
         email: user.email || email,
         phone: user.phone || profile?.phone,
         name: profile?.name || user.user_metadata?.name || user.email?.split('@')[0],
         role: normalizedRole,
-        country_preference: profile?.country_preference || user.user_metadata?.country_preference,
+        country_preference: getValidCountryPreference(),
         created_at: user.created_at,
       };
 
@@ -447,14 +466,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       if (data.user) {
-        // Insert user profile into users table
-        await supabase.from('users').insert({
+        // Update user profile (trigger handle_new_user already created the user)
+        // Use upsert to handle case where user already exists from trigger
+        // Only update fields that are provided, don't set country_preference (let user select it)
+        const updateData: any = {
           id: data.user.id,
           email: email,
-          name: name,
-          phone: phone,
-          role: role, // Allow role selection for testing
-        });
+        };
+        
+        // Only include fields if they have values
+        if (name) updateData.name = name;
+        if (phone) updateData.phone = phone;
+        if (role) updateData.role = role;
+        // Explicitly don't set country_preference - let it be NULL until user selects
+        
+        const { error: upsertError } = await supabase
+          .from('users')
+          .upsert(updateData, {
+            onConflict: 'id',
+          });
+        
+        if (upsertError) {
+          console.error('Error upserting user profile:', upsertError);
+          // Don't fail registration if profile update fails - user is still created by trigger
+        }
 
         // If session exists, use it (email confirmation disabled)
         // Otherwise, sign in automatically to get a session
@@ -660,13 +695,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   updateCountryPreference: async (country) => {
     try {
       const { user } = get();
-      if (!user) return;
+      if (!user) {
+        throw new Error('User not found');
+      }
 
       set({ isLoading: true });
       const updatedUser = await userService.updateCountryPreference(user.id, country);
-      get().setUser(updatedUser);
+      // Update user state - this will trigger re-renders in components using useAuthStore
+      set({ user: updatedUser });
+      // Also save to AsyncStorage
+      await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(updatedUser));
     } catch (error) {
       console.error('Error updating country preference:', error);
+      throw error; // Re-throw so caller can handle it
     } finally {
       set({ isLoading: false });
     }

@@ -155,12 +155,18 @@ const ProductsScreen = () => {
       />
       
       <View className="flex-row items-center justify-between mb-2">
-        <FilterBar
-          selectedCategory={selectedCategory}
-          onCategoryChange={setSelectedCategory}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-        />
+          <FilterBar
+            selectedCategory={selectedCategory}
+            onCategoryChange={setSelectedCategory}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            showClearFilters={true}
+            onClearFilters={() => {
+              setSelectedCategory('all');
+              setSortBy('name');
+            }}
+            resultCount={filteredProducts.length}
+          />
         
         {/* View Mode Toggle */}
         <View style={{ flexDirection: 'row', backgroundColor: 'rgba(245, 245, 250, 0.6)', borderRadius: 12, padding: 4 }}>

@@ -50,14 +50,21 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const { user } = useAuthStore();
   const selectedCountry = country || (user?.country_preference || COUNTRIES.GERMANY) as Country;
   const price = productService.getProductPrice(product, selectedCountry);
-  const originalPrice = selectedCountry === COUNTRIES.GERMANY
+  // Ensure originalPrice is valid, fallback to price if invalid
+  const originalPriceRaw = selectedCountry === COUNTRIES.GERMANY
     ? (product.original_price_germany || product.price_germany)
     : (product.original_price_denmark || product.price_denmark);
+  const originalPrice = (originalPriceRaw && !isNaN(originalPriceRaw) && originalPriceRaw > 0) 
+    ? originalPriceRaw 
+    : price;
   const hasDiscount = originalPrice > price;
   const discountPercentage = hasDiscount
     ? Math.round(((originalPrice - price) / originalPrice) * 100)
     : (product.discount_percentage || 0);
-  const isInStock = product.stock > 0;
+  const stock = selectedCountry === COUNTRIES.GERMANY 
+    ? product.stock_germany 
+    : product.stock_denmark;
+  const isInStock = stock > 0;
 
   const scale = useSharedValue(1);
   const opacity = useSharedValue(0);
@@ -92,7 +99,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
       if (onAddToCart) {
         onAddToCart();
       } else {
-        addItem(product, 1, selectedCountry);
+        // Fire and forget - don't block UI
+        addItem(product, 1, selectedCountry).catch((error) => {
+          console.error('Error adding to cart:', error);
+        });
       }
     }
   };
@@ -116,6 +126,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
           shadowOpacity: 0.15,
           shadowRadius: 16,
           elevation: 6,
+          minHeight: 380, // Fixed minimum height for consistency
+          flex: 1, // Allow flex to fill available space in grid
         },
       ]}
       accessibilityRole="none"
@@ -123,7 +135,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
       accessibilityHint={isInStock ? 'Double tap to view product details' : 'Product is currently out of stock'}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     >
-      <AnimatedView className="relative">
+      <AnimatedView className="relative" style={{ flex: 1, flexDirection: 'column' }}>
             <View className="w-full h-48 relative" accessibilityRole="image" accessibilityLabel={`${product.name} product image`}>
               {product.image_url ? (
                 <ProgressiveImage
@@ -167,56 +179,59 @@ const ProductCard: React.FC<ProductCardProps> = ({
           )}
         </View>
 
-        <View className="p-4">
-          <Text 
-            className="text-base font-semibold text-neutral-900 mb-1" 
-            numberOfLines={2}
-            accessibilityRole="header"
-            accessibilityLabel={`Product name: ${product.name}`}
-          >
-            {product.name}
-          </Text>
+        <View className="p-4" style={{ flex: 1, justifyContent: 'space-between', flexDirection: 'column' }}>
+          <View style={{ flex: 1 }}>
+            <Text 
+              className="text-base font-semibold text-neutral-900 mb-1" 
+              numberOfLines={2}
+              accessibilityRole="header"
+              accessibilityLabel={`Product name: ${product.name}`}
+              style={{ minHeight: 40 }} // Fixed height for 2 lines
+            >
+              {product.name}
+            </Text>
 
-          <View className="mb-3">
-            <View className="flex-row items-center mb-1">
-              <Text 
-                className="text-xl font-bold text-primary-500"
-                accessibilityLabel={`Price: ${formatCurrency(price, selectedCountry)}`}
-              >
-                {formatCurrency(price, selectedCountry)}
-              </Text>
-              {hasDiscount && originalPrice > price && (
+            <View className="mb-3">
+              <View className="flex-row items-center mb-1">
                 <Text 
-                  className="text-sm text-neutral-400 line-through ml-2"
-                  accessibilityLabel={`Original price: ${formatCurrency(originalPrice, selectedCountry)}`}
+                  className="text-xl font-bold text-primary-500"
+                  accessibilityLabel={`Price: ${formatCurrency(price, selectedCountry)}`}
                 >
-                  {formatCurrency(originalPrice, selectedCountry)}
+                  {formatCurrency(price, selectedCountry)}
                 </Text>
-              )}
-            </View>
-            {/* Rating Display */}
-            <View className="mb-2">
-              <RatingDisplay
-                rating={product.rating || 4.5}
-                size={14}
-                showNumber={false}
-                showCount={true}
-                reviewCount={product.review_count || Math.floor(Math.random() * 50) + 10}
-              />
-            </View>
-            <View className="flex-row justify-between items-center">
-              {product.stock > 0 && (
-                <Text className="text-xs text-neutral-500">
-                  {product.stock} in stock
-                </Text>
-              )}
-              {hasDiscount && (
-                <View className="bg-error-50 px-2 py-1 rounded">
-                  <Text className="text-xs font-semibold text-error-600">
-                    Save {selectedCountry === COUNTRIES.GERMANY ? '€' : 'NOK'} {(originalPrice - price).toFixed(2)}
+                {hasDiscount && originalPrice > price && (
+                  <Text 
+                    className="text-sm text-neutral-400 line-through ml-2"
+                    accessibilityLabel={`Original price: ${formatCurrency(originalPrice, selectedCountry)}`}
+                  >
+                    {formatCurrency(originalPrice, selectedCountry)}
                   </Text>
-                </View>
-              )}
+                )}
+              </View>
+              {/* Rating Display */}
+              <View className="mb-2" style={{ minHeight: 20 }}>
+                <RatingDisplay
+                  rating={product.rating || 4.5}
+                  size={14}
+                  showNumber={false}
+                  showCount={true}
+                  reviewCount={product.review_count || Math.floor(Math.random() * 50) + 10}
+                />
+              </View>
+              <View className="flex-row justify-between items-center" style={{ minHeight: 20 }}>
+                {stock > 0 && (
+                  <Text className="text-xs text-neutral-500">
+                    {stock} in stock
+                  </Text>
+                )}
+                {hasDiscount && (
+                  <View className="bg-error-50 px-2 py-1 rounded">
+                    <Text className="text-xs font-semibold text-error-600">
+                      Save {selectedCountry === COUNTRIES.GERMANY ? '€' : 'NOK'} {(originalPrice - price).toFixed(2)}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
           </View>
 

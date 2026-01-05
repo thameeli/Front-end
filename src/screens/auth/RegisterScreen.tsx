@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, Dimensions, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
@@ -13,7 +13,9 @@ import { RootStackParamList } from '../../types';
 import { useAuthStore } from '../../store/authStore';
 import { Button, Input, ErrorMessage, AnimatedView, Badge } from '../../components';
 import { registerSchema, validateForm } from '../../utils/validation';
+import { validateEmail, validatePassword, validateName, validatePhone, validateConfirmPassword } from '../../utils/fieldValidation';
 import { colors } from '../../theme';
+import { ASSETS } from '../../constants/assets';
 import {
   isSmallDevice,
   isTablet,
@@ -106,18 +108,21 @@ const RegisterScreen = () => {
           <AnimatedView animation="fade" delay={0} className="mb-8">
             <View className="items-center mb-6">
               <View style={{
-                width: isSmall ? 60 : isTabletDevice ? 100 : 80,
-                height: isSmall ? 60 : isTabletDevice ? 100 : 80,
-                borderRadius: isSmall ? 30 : isTabletDevice ? 50 : 40,
+                width: isSmall ? 100 : isTabletDevice ? 150 : 120,
+                height: isSmall ? 100 : isTabletDevice ? 150 : 120,
+                borderRadius: isSmall ? 50 : isTabletDevice ? 75 : 60,
                 backgroundColor: colors.primary[500] + '10',
                 justifyContent: 'center',
                 alignItems: 'center',
                 marginBottom: padding.vertical * 1.5,
               }}>
-                <Icon 
-                  name="account-plus" 
-                  size={isSmall ? 30 : isTabletDevice ? 50 : 40} 
-                  color={colors.primary[500]} 
+                <Image 
+                  source={ASSETS.logo} 
+                  style={{
+                    width: isSmall ? 70 : isTabletDevice ? 110 : 90,
+                    height: isSmall ? 70 : isTabletDevice ? 110 : 90,
+                  }}
+                  resizeMode="contain"
                 />
               </View>
               <Text style={{
@@ -162,7 +167,6 @@ const RegisterScreen = () => {
               )}
 
               <Input
-                label={t('auth.name')}
                 placeholder={t('auth.name')}
                 value={name}
                 onChangeText={(text) => {
@@ -172,12 +176,10 @@ const RegisterScreen = () => {
                 autoCapitalize="words"
                 error={errors.name}
                 leftIcon="account-outline"
-                floatingLabel
                 containerStyle={{ marginBottom: 20 }}
               />
 
               <Input
-                label={t('auth.email')}
                 placeholder={t('auth.email')}
                 value={email}
                 onChangeText={(text) => {
@@ -189,12 +191,13 @@ const RegisterScreen = () => {
                 autoComplete="email"
                 error={errors.email}
                 leftIcon="email-outline"
-                floatingLabel
+                validateOnChange={true}
+                showSuccess={true}
+                onValidate={validateEmail}
                 containerStyle={{ marginBottom: 20 }}
               />
 
               <Input
-                label={t('auth.phone')}
                 placeholder={t('auth.phone')}
                 value={phone}
                 onChangeText={(text) => {
@@ -205,13 +208,15 @@ const RegisterScreen = () => {
                 autoComplete="tel"
                 error={errors.phone}
                 leftIcon="phone-outline"
-                floatingLabel
+                validateOnChange={true}
+                showSuccess={true}
+                onValidate={validatePhone}
+                helperText="Optional"
                 containerStyle={{ marginBottom: 20 }}
               />
 
 
               <Input
-                label={t('auth.password')}
                 placeholder={t('auth.password')}
                 value={password}
                 onChangeText={(text) => {
@@ -222,12 +227,14 @@ const RegisterScreen = () => {
                 autoComplete="password-new"
                 error={errors.password}
                 leftIcon="lock-outline"
-                floatingLabel
+                validateOnChange={true}
+                showSuccess={true}
+                onValidate={validatePassword}
+                helperText="At least 6 characters"
                 containerStyle={{ marginBottom: 20 }}
               />
 
               <Input
-                label={t('auth.confirmPassword')}
                 placeholder={t('auth.confirmPassword')}
                 value={confirmPassword}
                 onChangeText={(text) => {
@@ -238,7 +245,9 @@ const RegisterScreen = () => {
                 autoComplete="password-new"
                 error={errors.confirmPassword}
                 leftIcon="lock-check-outline"
-                floatingLabel
+                validateOnChange={true}
+                showSuccess={true}
+                onValidate={(val) => validateConfirmPassword(val, password)}
                 containerStyle={{ marginBottom: 20 }}
               />
 
