@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { TextInput, TouchableOpacity, View, Text, StyleSheet, FlatList, Modal } from 'react-native';
+import { TextInput, TouchableOpacity, View, Text, StyleSheet, FlatList, Modal, Platform } from 'react-native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { colors } from '../theme';
 import { getSearchHistory, getSearchSuggestions, addToSearchHistory, removeFromSearchHistory, clearSearchHistory } from '../utils/searchHistory';
@@ -132,26 +132,26 @@ const SearchBar: React.FC<SearchBarProps> = ({
           style={styles.searchIcon}
         />
 
-        <TextInput
-          style={styles.input}
-          placeholder={placeholder}
-          placeholderTextColor={colors.neutral[400]}
-          value={value}
-          onChangeText={(text) => {
-            onChangeText(text);
-            if (text.length > 0) {
-              setShowSuggestionsModal(true);
-            }
-          }}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          onSubmitEditing={handleSearch}
-          autoCapitalize="none"
-          autoCorrect={false}
-          accessibilityLabel="Search input"
-          accessibilityHint="Enter search query"
-          accessibilityRole="searchbox"
-        />
+<TextInput
+  style={styles.input}
+  placeholder={placeholder}
+  placeholderTextColor={colors.neutral[400]}
+  value={value}
+  onChangeText={(text) => {
+    onChangeText(text);
+    if (text.length > 0) {
+      setShowSuggestionsModal(true);
+    }
+  }}
+  onFocus={handleFocus}
+  onBlur={handleBlur}
+  onSubmitEditing={handleSearch}
+  autoCapitalize="none"
+  autoCorrect={false}
+  accessibilityLabel="Search input"
+  accessibilityHint="Enter search query"
+  accessibilityRole={Platform.OS === 'ios' ? 'search' : 'text'}
+/>
 
         {hasValue && (
           <TouchableOpacity onPress={handleClear} style={styles.clearButton}>

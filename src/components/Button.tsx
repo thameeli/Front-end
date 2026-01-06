@@ -5,7 +5,7 @@
  */
 
 import React, { useState } from 'react';
-import { Text, ActivityIndicator, ViewStyle, TextStyle, Pressable, View } from 'react-native';
+import { Text, ActivityIndicator, ViewStyle, TextStyle, Pressable, View ,StyleProp} from 'react-native';
 
 // Safe import of reanimated with fallback
 let Animated: any;
@@ -36,7 +36,7 @@ interface ButtonProps {
   variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost';
   disabled?: boolean;
   loading?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   textStyle?: TextStyle;
   fullWidth?: boolean;
   size?: 'sm' | 'md' | 'lg' | 'xl';

@@ -126,6 +126,7 @@ export const colors = {
     default: '#FFFFFF',
     secondary: '#FAFAFA',
     tertiary: '#F5F5F5',
+     card: '#FFFFFF'
   },
   
   // Text colors (WCAG AA compliant)
